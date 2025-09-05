@@ -1,3 +1,4 @@
+// src/db/notes.ts
 import { getDB, nowISO } from './sqlite';
 import { Note } from './types';
 
@@ -11,6 +12,7 @@ function placeholders(n: number): string {
   return Array.from({ length: n }, () => '?').join(', ');
 }
 
+/** ===== Basic listings ===== */
 export async function listNotes(includeDeleted = false): Promise<Note[]> {
   const db = await getDB();
   const res = await db.executeSql(
@@ -48,6 +50,7 @@ export async function listNotesByFolder(folderId: number | null): Promise<Note[]
   return mapRows<Note>(res[0].rows);
 }
 
+/** ===== CRUD ===== */
 export async function getNote(id: number): Promise<Note | null> {
   const db = await getDB();
   const res = await db.executeSql('SELECT * FROM notes WHERE id = ? LIMIT 1;', [id]);
@@ -111,8 +114,7 @@ export async function toggleFavorite(id: number, fav: boolean): Promise<void> {
   );
 }
 
-/* ===== Batch operations for Step 5 ===== */
-
+/** ===== Batch operations (Step 5) ===== */
 export async function restoreNotes(ids: number[]): Promise<void> {
   if (!ids.length) return;
   const db = await getDB();
@@ -143,4 +145,72 @@ export async function toggleFavorites(ids: number[], fav: boolean): Promise<void
     `UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id IN (${ph});`,
     [fav ? 1 : 0, nowISO(), ...ids]
   );
+}
+
+/** ===== Search / Sort / Filter (Step 6) ===== */
+
+export type SearchSort = 'updated_desc' | 'title_asc' | 'favorite_first';
+export type SearchOptions = {
+  includeDeleted?: boolean;      // default false
+  favoritesOnly?: boolean;       // default false
+  folderId?: number | null;      // undefined = any; null = only NULL; number = exact id
+  sort?: SearchSort;             // default 'updated_desc'
+  limit?: number;                // optional
+  offset?: number;               // optional
+};
+
+export async function searchNotes(query: string, opts: SearchOptions = {}): Promise<Note[]> {
+  const db = await getDB();
+  const q = (query ?? '').trim();
+  const terms = q ? q.split(/\s+/) : [];
+
+  const where: string[] = [];
+  const params: any[] = [];
+
+  // deleted filter
+  if (!opts.includeDeleted) {
+    where.push('is_deleted = 0');
+  }
+
+  // favorites filter
+  if (opts.favoritesOnly) {
+    where.push('is_favorite = 1');
+  }
+
+  // folder filter
+  if (opts.folderId === null) {
+    where.push('folder_id IS NULL');
+  } else if (typeof opts.folderId === 'number') {
+    where.push('folder_id = ?');
+    params.push(opts.folderId);
+  }
+
+  // text terms (AND between terms, OR within title/content)
+  for (const t of terms) {
+    where.push('(title LIKE ? OR content LIKE ?)');
+    const like = `%${t}%`;
+    params.push(like, like);
+  }
+
+  const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  let orderBy = 'ORDER BY updated_at DESC';
+  switch (opts.sort) {
+    case 'title_asc':
+      orderBy = 'ORDER BY LOWER(title) ASC, updated_at DESC';
+      break;
+    case 'favorite_first':
+      orderBy = 'ORDER BY is_favorite DESC, updated_at DESC';
+      break;
+    default:
+      orderBy = 'ORDER BY updated_at DESC';
+  }
+
+  const pagination =
+    typeof opts.limit === 'number'
+      ? ` LIMIT ${Math.max(0, opts.limit)} OFFSET ${Math.max(0, opts.offset || 0)}`
+      : '';
+
+  const sql = `SELECT * FROM notes ${whereSql} ${orderBy}${pagination};`;
+  const res = await db.executeSql(sql, params);
+  return mapRows<Note>(res[0].rows);
 }

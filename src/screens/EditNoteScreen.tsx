@@ -7,6 +7,7 @@ import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { createNote, getNote, updateNote } from '../db/notes';
 import { showToast } from '../components/Toast';
+import { clearDraft, loadDraft, saveDraft, NoteDraft } from '../utils/storage';
 
 type RouteParams = { noteId?: number };
 
@@ -25,39 +26,51 @@ export default function EditNoteScreen({ route, navigation }: any) {
   // ui state
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [confirmBack, setConfirmBack] = useState(false);
 
-  // bypass flag: allow navigation after explicit actions (save or confirm discard)
+  // guard controls
   const bypassGuardRef = useRef(false);
+  const [confirmDiscard, setConfirmDiscard] = useState(false); // Cancel button -> discard & leave
+  const [confirmLeaveKeepDraft, setConfirmLeaveKeepDraft] = useState(false); // Back/gesture -> leave & keep draft
 
-  // load note when editing
+  // debounce timer for autosave draft
+  const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // load note + draft on mount
   useEffect(() => {
-    if (!editingId) return;
-    getNote(editingId).then(n => {
-      if (n) {
-        setTitle(n.title);
-        setContent(n.content);
+    (async () => {
+      let loadedTitle = '';
+      let loadedContent = '';
+
+      if (editingId) {
+        const n = await getNote(editingId);
+        if (n) { loadedTitle = n.title; loadedContent = n.content; }
       }
-    });
+
+      const draft = await loadDraft(editingId ?? 'new');
+      if (draft) {
+        loadedTitle = draft.title;
+        loadedContent = draft.content;
+        showToast.success('Draft restored');
+      }
+
+      setTitle(loadedTitle);
+      setContent(loadedContent);
+    })();
   }, [editingId]);
 
-  // set header title
+  // header title
   useEffect(() => {
     navigation.setOptions({ title: isEditing ? 'Edit Note' : 'New Note' });
   }, [navigation, isEditing]);
 
-  // guard leaving the screen when there are unsaved changes
+  // beforeRemove guard:
+  // - If user tries to leave with unsaved changes -> ask to "Leave & keep draft"
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
-      // If we explicitly allow (after a successful save or confirmed discard), let it pass
-      if (bypassGuardRef.current) return;
-
-      // If nothing changed, allow leaving
-      if (!dirty) return;
-
-      // Otherwise block and show confirm dialog
+      if (bypassGuardRef.current) return;      // allow explicit navigations
+      if (!dirty) return;                      // nothing changed -> allow
       e.preventDefault();
-      setConfirmBack(true);
+      setConfirmLeaveKeepDraft(true);          // show "leave & keep draft" prompt
     });
     return unsub;
   }, [navigation, dirty]);
@@ -71,6 +84,17 @@ export default function EditNoteScreen({ route, navigation }: any) {
     return true;
   }
 
+  // autosave draft (debounced 500ms after any change)
+  useEffect(() => {
+    if (!dirty) return;
+    if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
+    draftTimerRef.current = setTimeout(() => {
+      const draft: NoteDraft = { title, content, updated_at: new Date().toISOString() };
+      saveDraft(editingId ?? 'new', draft).catch(() => {});
+    }, 500);
+    return () => { if (draftTimerRef.current) clearTimeout(draftTimerRef.current); };
+  }, [title, content, dirty, editingId]);
+
   async function onSave() {
     if (!validate()) return;
     setSaving(true);
@@ -78,15 +102,15 @@ export default function EditNoteScreen({ route, navigation }: any) {
       if (isEditing && editingId) {
         await updateNote(editingId, { title: title.trim(), content });
         showToast.success('Saved');
-        // mark clean and bypass the guard before navigating back
         setDirty(false);
+        await clearDraft(editingId);           // clear draft on successful save
         bypassGuardRef.current = true;
         navigation.goBack();
       } else {
         const n = await createNote({ title: title.trim(), content });
         showToast.success('Created');
-        // navigate to details; bypass to avoid the guard firing during replace
         setDirty(false);
+        await clearDraft('new');               // clear new-note draft
         bypassGuardRef.current = true;
         navigation.replace('NoteDetails', { noteId: n.id });
       }
@@ -97,10 +121,14 @@ export default function EditNoteScreen({ route, navigation }: any) {
     }
   }
 
+  // Page "Cancel" button -> ask to discard & leave (draft will be removed)
   function onCancel() {
-    // pressing Cancel will trigger the guard; we simply request back navigation
-    // the guard will show the confirm dialog due to `dirty`
-    navigation.goBack();
+    if (!dirty) {
+      bypassGuardRef.current = true;
+      navigation.goBack();
+      return;
+    }
+    setConfirmDiscard(true);
   }
 
   return (
@@ -129,14 +157,34 @@ export default function EditNoteScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
+      {/* Back/gesture: Leave & keep draft (for autosave/restore demo) */}
       <ConfirmDialog
-        visible={confirmBack}
-        title="Discard changes?"
-        message="Unsaved changes will be lost."
-        onCancel={() => setConfirmBack(false)}
+        visible={confirmLeaveKeepDraft}
+        title="Leave without saving?"
+        message="Your changes will be kept as a local draft and restored next time."
+        cancelLabel="Keep Editing"
+        confirmLabel="Leave"
+        onCancel={() => setConfirmLeaveKeepDraft(false)}
         onConfirm={() => {
-          // user confirmed to discard; allow navigation and go back
-          setConfirmBack(false);
+          setConfirmLeaveKeepDraft(false);
+          // Do NOT clear draft here; allow leaving and keep the draft
+          bypassGuardRef.current = true;
+          navigation.goBack();
+        }}
+      />
+
+      {/* Page Cancel: Discard & leave (remove draft) */}
+      <ConfirmDialog
+        visible={confirmDiscard}
+        danger
+        title="Discard changes?"
+        message="Unsaved changes and draft will be removed."
+        cancelLabel="Back"
+        confirmLabel="Discard"
+        onCancel={() => setConfirmDiscard(false)}
+        onConfirm={async () => {
+          setConfirmDiscard(false);
+          await clearDraft(editingId ?? 'new');  // explicitly remove draft
           bypassGuardRef.current = true;
           navigation.goBack();
         }}

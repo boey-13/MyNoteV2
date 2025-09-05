@@ -1,3 +1,4 @@
+// src/screens/HomeScreen.tsx
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -5,6 +6,7 @@ import { listFavorites, listNotes } from '../db/notes';
 import NoteCard from '../components/NoteCard';
 import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
+import { exportAllToJson } from '../utils/exporter';
 
 export default function HomeScreen({ navigation }: any) {
   const { theme } = useAppTheme();
@@ -30,16 +32,25 @@ export default function HomeScreen({ navigation }: any) {
     return unsub;
   }, [navigation, load]);
 
+  async function onExport() {
+    try {
+      const { path, bytes } = await exportAllToJson();
+      showToast.success(`Exported ${Math.round(bytes / 1024)} KB`);
+      console.log('[Export] saved at:', path);
+    } catch (e: any) {
+      showToast.error(e?.message ?? 'Export failed');
+    }
+  }
+
   return (
     <ScrollView
       style={{ flex: 1, padding: theme.spacing(4) }}
       refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
     >
-      <CustomButton
-        label="New Note"
-        onPress={() => navigation.navigate('EditNote')}
-        style={{ marginBottom: theme.spacing(3) }}
-      />
+      <View style={{ flexDirection: 'row', gap: theme.spacing(3), marginBottom: theme.spacing(3) }}>
+        <CustomButton label="New Note" onPress={() => navigation.navigate('EditNote')} />
+        <CustomButton variant="outline" label="Export All Notes (JSON)" onPress={onExport} />
+      </View>
 
       {favs.length > 0 && (
         <View style={{ marginBottom: theme.spacing(3) }}>
