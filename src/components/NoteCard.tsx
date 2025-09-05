@@ -21,6 +21,20 @@ export default function NoteCard({
 }: Props) {
   const { theme } = useAppTheme();
 
+  function stripHtml(input: string): string {
+    // remove tags
+    const noTags = input.replace(/<[^>]*>/g, '');
+    // basic entity decode
+    return noTags
+      .replace(/&nbsp;/g, ' ')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .trim();
+  }
+
+  const displaySubtitle = subtitle ? stripHtml(subtitle) : '';
+
   const body = (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: theme.spacing(1) }}>
@@ -32,9 +46,9 @@ export default function NoteCard({
         </Text>
         {favorite ? <Text style={{ marginLeft: theme.spacing(2) }}>★</Text> : null}
       </View>
-      {!!subtitle && (
+      {!!displaySubtitle && (
         <Text numberOfLines={2} style={{ fontFamily: theme.fonts.regular, color: theme.colors.mutedText }}>
-          {subtitle}
+          {displaySubtitle}
         </Text>
       )}
     </View>

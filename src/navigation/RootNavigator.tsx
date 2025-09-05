@@ -10,6 +10,7 @@ import EditNoteScreen from '../screens/EditNoteScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AboutScreen from '../screens/AboutScreen';
+import ImageViewerScreen from '../screens/ImageViewerScreen';
 import { Text } from 'react-native';
 
 const Drawer = createDrawerNavigator();
@@ -33,6 +34,7 @@ function DashboardStack() {
       <Stack.Screen name="Tabs" component={Tabs} options={{ headerShown: false }} />
       <Stack.Screen name="NoteDetails" component={NoteDetailsScreen} options={{ title: 'Note' }} />
       <Stack.Screen name="EditNote" component={EditNoteScreen} options={{ title: 'Edit' }} />
+      <Stack.Screen name="ImageViewer" component={ImageViewerScreen} options={{ title: 'Image' }} />
     </Stack.Navigator>
   );
 }

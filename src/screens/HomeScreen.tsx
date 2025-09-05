@@ -8,6 +8,7 @@ import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
 import { exportAllToJson } from '../utils/exporter';
 
+
 export default function HomeScreen({ navigation }: any) {
   const { theme } = useAppTheme();
   const [notes, setNotes] = useState<any[]>([]);
