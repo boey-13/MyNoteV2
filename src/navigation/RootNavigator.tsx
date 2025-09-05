@@ -12,6 +12,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import AboutScreen from '../screens/AboutScreen';
 import ImageViewerScreen from '../screens/ImageViewerScreen';
 import { Text } from 'react-native';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 
 const Drawer = createDrawerNavigator();
 const Tab = createBottomTabNavigator();
@@ -20,10 +22,32 @@ const Stack = createNativeStackNavigator();
 function Tabs() {
   return (
     <Tab.Navigator
+      initialRouteName="Home"
       screenOptions={{ headerShown: false, tabBarInactiveTintColor: '#6A4E3B' }}>
-      <Tab.Screen name="Recycle" component={RecycleBinScreen} options={{ title: 'Recycle' }} />
-      <Tab.Screen name="Home" component={HomeScreen} options={{ title: 'Home' }} />
-      <Tab.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
+      <Tab.Screen 
+        name="Home" 
+        component={HomeScreen} 
+        options={{ 
+          title: 'Home',
+          tabBarIcon: ({ color, size }) => <Icon name="home" size={size} color={color} />
+        }} 
+      />
+      <Tab.Screen 
+        name="Search" 
+        component={SearchScreen} 
+        options={{ 
+          title: 'Search',
+          tabBarIcon: ({ color, size }) => <Icon name="search" size={size} color={color} />
+        }} 
+      />
+      <Tab.Screen 
+        name="Recycle" 
+        component={RecycleBinScreen} 
+        options={{ 
+          title: 'Recycle',
+          tabBarIcon: ({ color, size }) => <Icon name="trash-2" size={size} color={color} />
+        }} 
+      />
     </Tab.Navigator>
   );
 }
