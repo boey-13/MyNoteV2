@@ -11,6 +11,12 @@
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		761780ED2CA45674006654EE /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 761780EC2CA45674006654EE /* AppDelegate.swift */; };
 		81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */; };
+		A0DB36CBCC6345018E8D0CFC /* Anta-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = A4E9B7168A66493A911C9A26 /* Anta-Regular.ttf */; };
+		D3D7ACD789184349861DAF20 /* Poppins-Bold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 79A6664FF95A47749A09B342 /* Poppins-Bold.ttf */; };
+		915DB17786054C0D946DEEC2 /* Poppins-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 922BB3EBDA034DA5AB9230C9 /* Poppins-Regular.ttf */; };
+		681AA7E6784C41C79553C210 /* WinkyRough-Regular.ttf in Resources */ = {isa = PBXBuildFile; fileRef = E61486E402DB4F728204196F /* WinkyRough-Regular.ttf */; };
+		BF055655B93F4BE7A8F9EAB3 /* WinkyRough-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = C7486CF1D7314FB38F18FB43 /* WinkyRough-SemiBold.ttf */; };
+		799D3D20A3E94C58BE3CE2A5 /* Poppins-SemiBold.ttf in Resources */ = {isa = PBXBuildFile; fileRef = 4F540EB3C5804A128C721DA9 /* Poppins-SemiBold.ttf */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +41,12 @@
 		761780EC2CA45674006654EE /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = MyNoteV2/AppDelegate.swift; sourceTree = "<group>"; };
 		81AB9BB72411601600AC10FF /* LaunchScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = LaunchScreen.storyboard; path = MyNoteV2/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		A4E9B7168A66493A911C9A26 /* Anta-Regular.ttf */ = {isa = PBXFileReference; name = "Anta-Regular.ttf"; path = "../assets/fonts/Anta-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		79A6664FF95A47749A09B342 /* Poppins-Bold.ttf */ = {isa = PBXFileReference; name = "Poppins-Bold.ttf"; path = "../assets/fonts/Poppins-Bold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		922BB3EBDA034DA5AB9230C9 /* Poppins-Regular.ttf */ = {isa = PBXFileReference; name = "Poppins-Regular.ttf"; path = "../assets/fonts/Poppins-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		E61486E402DB4F728204196F /* WinkyRough-Regular.ttf */ = {isa = PBXFileReference; name = "WinkyRough-Regular.ttf"; path = "../assets/fonts/WinkyRough-Regular.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		C7486CF1D7314FB38F18FB43 /* WinkyRough-SemiBold.ttf */ = {isa = PBXFileReference; name = "WinkyRough-SemiBold.ttf"; path = "../assets/fonts/WinkyRough-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
+		4F540EB3C5804A128C721DA9 /* Poppins-SemiBold.ttf */ = {isa = PBXFileReference; name = "Poppins-SemiBold.ttf"; path = "../assets/fonts/Poppins-SemiBold.ttf"; sourceTree = "<group>"; fileEncoding = undefined; lastKnownFileType = unknown; explicitFileType = undefined; includeInIndex = 0; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -93,6 +105,7 @@
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BBD78D7AC51CEA395F1C20DB /* Pods */,
+				EAA2118457C04EB6B99A9DD4 /* Resources */,
 			);
 			indentWidth = 2;
 			sourceTree = "<group>";
@@ -115,6 +128,20 @@
 			);
 			path = Pods;
 			sourceTree = "<group>";
+		};
+		EAA2118457C04EB6B99A9DD4 /* Resources */ = {
+			isa = "PBXGroup";
+			children = (
+				A4E9B7168A66493A911C9A26 /* Anta-Regular.ttf */,
+				79A6664FF95A47749A09B342 /* Poppins-Bold.ttf */,
+				922BB3EBDA034DA5AB9230C9 /* Poppins-Regular.ttf */,
+				E61486E402DB4F728204196F /* WinkyRough-Regular.ttf */,
+				C7486CF1D7314FB38F18FB43 /* WinkyRough-SemiBold.ttf */,
+				4F540EB3C5804A128C721DA9 /* Poppins-SemiBold.ttf */,
+			);
+			name = Resources;
+			sourceTree = "<group>";
+			path = "";
 		};
 /* End PBXGroup section */
 
@@ -185,6 +212,12 @@
 			files = (
 				81AB9BB82411601600AC10FF /* LaunchScreen.storyboard in Resources */,
 				13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */,
+				A0DB36CBCC6345018E8D0CFC /* Anta-Regular.ttf in Resources */,
+				D3D7ACD789184349861DAF20 /* Poppins-Bold.ttf in Resources */,
+				915DB17786054C0D946DEEC2 /* Poppins-Regular.ttf in Resources */,
+				681AA7E6784C41C79553C210 /* WinkyRough-Regular.ttf in Resources */,
+				BF055655B93F4BE7A8F9EAB3 /* WinkyRough-SemiBold.ttf in Resources */,
+				799D3D20A3E94C58BE3CE2A5 /* Poppins-SemiBold.ttf in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
