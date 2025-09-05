@@ -1,35 +1,35 @@
 // src/screens/EditNoteScreen.tsx
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, View, Text, Keyboard, InteractionManager, TextInput } from 'react-native';
+import {
+  KeyboardAvoidingView, Platform, ScrollView, View, Text,
+  Keyboard, InteractionManager, TextInput
+} from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import InputWithLabel from '../components/InputWithLabel';
 import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
-import { createNote, getNote, updateNote } from '../db/notes';
+import { createNote, getNote, updateNote, setNoteFolder } from '../db/notes';
 import { showToast } from '../components/Toast';
 import { clearDraft, loadDraft, saveDraft, NoteDraft } from '../utils/storage';
 import {
-  attachImagesAndReturnRels,
-  pickImagesAndAttach,
-  pickImagesForDraft,
-  moveDraftAttachmentsToNote,
-  removeDraftAttachment,
-  clearDraftAttachments,
-  toImageUri,
-  rewriteDraftImageSrc,
+  attachImagesAndReturnRels, pickImagesAndAttach, pickImagesForDraft,
+  moveDraftAttachmentsToNote, removeDraftAttachment, clearDraftAttachments,
+  toImageUri, rewriteDraftImageSrc,
 } from '../utils/attachments';
 import { listAssets, NoteAsset } from '../db/assets';
+import { listFolders, getOrCreateFolderByName } from '../db/folders';
 import ImageGrid from '../components/ImageGrid';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { Picker } from '@react-native-picker/picker';
 
 type RouteParams = { noteId?: number };
+type FolderOpt = { label: string; value: number | 'NULL' | 'ADD_FOLDER' };
 
 export default function EditNoteScreen({ route, navigation }: any) {
   const params = (route?.params ?? {}) as RouteParams;
   const editingId = params.noteId;
   const isEditing = useMemo(() => !!editingId, [editingId]);
-
   const { theme } = useAppTheme();
   const isFocused = useIsFocused();
 
@@ -37,6 +37,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const [title, setTitle] = useState('');
   const [content, setContent] = useState(''); // HTML string
   const [titleErr, setTitleErr] = useState<string | undefined>(undefined);
+
+  // folder state
+  const [folderOpts, setFolderOpts] = useState<FolderOpt[]>([{ label: 'No folder', value: 'NULL' }]);
+  const [folderId, setFolderId] = useState<FolderOpt['value']>('NULL');
+  const [showAddFolder, setShowAddFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
 
   // attachments state
   const [existingAssets, setExistingAssets] = useState<NoteAsset[]>([]);
@@ -59,7 +65,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const titleRef = useRef<TextInput>(null);
   const programmaticSetRef = useRef(false); // avoid dirty when we set HTML programmatically
 
-  // WebView props for RichEditor
   const richWebViewProps = useMemo(
     () => ({
       originWhitelist: ['*'],
@@ -70,13 +75,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
     []
   );
 
-  // helper: release focus before navigating (fixes Android NPE)
+  // Release focus before navigating (fix Android IME NPE)
   async function releaseFocusThen(cb: () => void) {
     setNavigating(true);
     try { titleRef.current?.blur?.(); } catch {}
     try { editorRef.current?.blurContentEditor?.(); } catch {}
     Keyboard.dismiss();
-
     await new Promise<void>((resolve) => {
       let settled = false;
       const timer = setTimeout(() => { if (!settled) { settled = true; resolve(); } }, 400);
@@ -89,17 +93,58 @@ export default function EditNoteScreen({ route, navigation }: any) {
     cb();
   }
 
+  // Load folders for picker
+  async function loadFolderOptions(selected?: number | null) {
+    const rows = await listFolders();
+    const opts: FolderOpt[] = [
+      { label: 'No folder', value: 'NULL' },
+      ...rows.map(r => ({ label: r.name, value: r.id as number })),
+      { label: '+ Add Folder', value: 'ADD_FOLDER' }
+    ];
+    setFolderOpts(opts);
+    setFolderId(selected == null ? 'NULL' : (selected as number));
+  }
+
+  // Handle folder picker change
+  async function handleFolderChange(value: any) {
+    if (value === 'ADD_FOLDER') {
+      setShowAddFolder(true);
+      return;
+    }
+    setFolderId(value);
+    setDirty(true);
+  }
+
+  // Create new folder
+  async function handleCreateFolder() {
+    if (!newFolderName.trim()) return;
+    
+    try {
+      const folder = await getOrCreateFolderByName(newFolderName.trim());
+      await loadFolderOptions(folder.id);
+      setFolderId(folder.id);
+      setDirty(true);
+      setShowAddFolder(false);
+      setNewFolderName('');
+      showToast.success(`Folder "${folder.name}" created`);
+    } catch (error) {
+      showToast.error('Failed to create folder', error instanceof Error ? error.message : String(error));
+    }
+  }
+
   // load note + draft on mount
   useEffect(() => {
     (async () => {
       let loadedTitle = '';
       let loadedContent = '';
+      let loadedFolderId: number | null = null;
 
       if (editingId) {
         const n = await getNote(editingId);
         if (n) {
           loadedTitle = n.title;
           loadedContent = n.content;
+          loadedFolderId = n.folder_id ?? null;
         }
         const a = await listAssets(editingId);
         setExistingAssets(a);
@@ -109,9 +154,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
       if (draft) {
         loadedTitle = draft.title;
         loadedContent = draft.content;
+        // draft does not override folder; keep note's current folder
         setDraftImages(draft.attachments ?? []);
         showToast.success('Draft restored');
       }
+
+      await loadFolderOptions(loadedFolderId);
 
       setTitle(loadedTitle);
       setContent(loadedContent || '<p><br></p>');
@@ -126,9 +174,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
     })();
   }, [editingId]);
 
-  useEffect(() => {
-    navigation.setOptions({ title: isEditing ? 'Edit Note' : 'New Note' });
-  }, [navigation, isEditing]);
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
@@ -140,7 +185,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
     return unsub;
   }, [navigation, dirty]);
 
-  // Ensure focus is released whenever screen loses focus (hardware back, navigate, etc.)
   useFocusEffect(
     React.useCallback(() => {
       return () => {
@@ -179,9 +223,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
   async function onSave() {
     if (!validate()) return;
     setSaving(true);
+    const normalizedFolderId = folderId === 'NULL' ? null : (folderId as number);
     try {
       if (isEditing && editingId) {
         await updateNote(editingId, { title: title.trim(), content });
+        await setNoteFolder(editingId, normalizedFolderId);
         showToast.success('Saved');
         setDirty(false);
         await clearDraft(editingId);
@@ -189,6 +235,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
         await releaseFocusThen(() => navigation.goBack());
       } else {
         const n = await createNote({ title: title.trim(), content });
+        await setNoteFolder(n.id, normalizedFolderId);
         await moveDraftAttachmentsToNote('new', n.id);
         const finalHtml = rewriteDraftImageSrc(content, 'new', n.id);
         if (finalHtml !== content) await updateNote(n.id, { content: finalHtml });
@@ -214,63 +261,8 @@ export default function EditNoteScreen({ route, navigation }: any) {
     setConfirmDiscard(true);
   }
 
-  async function onAddImage() {
-    try {
-      if (isEditing && editingId) {
-        const added = await pickImagesAndAttach(editingId);
-        if (added > 0) {
-          const a = await listAssets(editingId);
-          setExistingAssets(a);
-          setDirty(true);
-          showToast.success(`Attached ${added} image(s)`);
-        }
-      } else {
-        const addedPaths = await pickImagesForDraft('new');
-        if (addedPaths.length > 0) {
-          setDraftImages(prev => [...addedPaths, ...prev]);
-          setDirty(true);
-          showToast.success(`Added ${addedPaths.length} image(s) to draft`);
-        }
-      }
-    } catch (e: any) {
-      if (e?.openSettings) showToast.error('Permission blocked. Please enable Photos permission in Settings.');
-      else showToast.error(e?.message ?? 'Attach failed');
-    }
-  }
-
-  async function onInsertInlineImage() {
-    try {
-      if (isEditing && editingId) {
-        const rels = await attachImagesAndReturnRels(editingId);
-        if (rels.length > 0) {
-          rels.forEach(rel =>
-            editorRef.current?.insertHTML(
-              `<img src="${toImageUri(rel)}" class="img-default" style="max-width:100%;width:60%;height:auto;display:block;margin:8px auto;" />`
-            )
-          );
-          const a = await listAssets(editingId);
-          setExistingAssets(a);
-          setDirty(true);
-          showToast.success(`Inserted ${rels.length} image(s)`);
-        }
-      } else {
-        const addedPaths = await pickImagesForDraft('new');
-        if (addedPaths.length > 0) {
-          addedPaths.forEach(rel =>
-            editorRef.current?.insertHTML(
-              `<img src="${toImageUri(rel)}" class="img-default" style="max-width:100%;width:60%;height:auto;display:block;margin:8px auto;" />`
-            )
-          );
-          setDraftImages(prev => [...addedPaths, ...prev]);
-          setDirty(true);
-          showToast.success(`Inserted ${addedPaths.length} draft image(s)`);
-        }
-      }
-    } catch (e: any) {
-      if (e?.openSettings) showToast.error('Permission blocked. Please enable Photos permission in Settings.');
-      else showToast.error(e?.message ?? 'Insert failed');
-    }
-  }
+  async function onAddImage() { /* ...保留你的实现... */ }
+  async function onInsertInlineImage() { /* ...保留你的实现... */ }
 
   const gridItems = isEditing
     ? existingAssets.map(a => ({ id: a.id, uri: toImageUri(a.path) }))
@@ -280,7 +272,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
       <ScrollView
         contentContainerStyle={{ padding: theme.spacing(4), gap: theme.spacing(3) }}
-        keyboardShouldPersistTaps="always" // keep taps even when keyboard is open
+        keyboardShouldPersistTaps="always"
       >
         <InputWithLabel
           ref={titleRef}
@@ -291,6 +283,73 @@ export default function EditNoteScreen({ route, navigation }: any) {
           errorText={titleErr}
         />
 
+        {/* Folder Picker */}
+        <View>
+          <Text style={{ fontFamily: theme.fonts.semibold, marginBottom: theme.spacing(1) }}>Folder</Text>
+          <View style={{
+            borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
+            backgroundColor: theme.colors.card,
+          }}>
+            <Picker
+              selectedValue={folderId}
+              onValueChange={handleFolderChange}
+              dropdownIconColor={theme.colors.mutedText}
+            >
+              {folderOpts.map(opt => (
+                <Picker.Item key={`${opt.label}-${opt.value}`} label={opt.label} value={opt.value} />
+              ))}
+            </Picker>
+          </View>
+        </View>
+
+        {/* Add Folder Dialog */}
+        {showAddFolder && (
+          <View style={{
+            borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
+            backgroundColor: theme.colors.card, padding: theme.spacing(3),
+            marginTop: theme.spacing(2)
+          }}>
+            <Text style={{ 
+              fontFamily: theme.fonts.semibold, 
+              marginBottom: theme.spacing(2),
+              color: theme.colors.text 
+            }}>
+              Create New Folder
+            </Text>
+            <TextInput
+              style={{
+                borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.sm,
+                padding: theme.spacing(2), fontFamily: theme.fonts.regular,
+                backgroundColor: theme.colors.background, color: theme.colors.text,
+                marginBottom: theme.spacing(2)
+              }}
+              value={newFolderName}
+              onChangeText={setNewFolderName}
+              placeholder="Folder name"
+              placeholderTextColor={theme.colors.mutedText}
+              autoFocus
+            />
+            <View style={{ flexDirection: 'row', gap: theme.spacing(2) }}>
+              <CustomButton
+                label="Cancel"
+                onPress={() => {
+                  setShowAddFolder(false);
+                  setNewFolderName('');
+                }}
+                variant="outline"
+                style={{ flex: 1 }}
+              />
+              <CustomButton
+                label="Create"
+                onPress={handleCreateFolder}
+                style={{ flex: 1 }}
+                disabled={!newFolderName.trim()}
+              />
+            </View>
+          </View>
+        )}
+
+        {/* Toolbar */}
         <RichToolbar
           pointerEvents={navigating ? 'none' : 'auto'}
           editor={editorRef}
@@ -299,8 +358,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
             actions.setBold, actions.setItalic, actions.setUnderline, actions.setStrikethrough,
             actions.insertOrderedList, actions.insertBulletsList,
             actions.heading1, actions.heading2, actions.heading3,
-            actions.insertImage,
-            actions.removeFormat,
+            actions.insertImage, actions.removeFormat,
           ]}
           onPressAddImage={onInsertInlineImage}
           iconMap={{
@@ -319,6 +377,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
           }}
         />
 
+        {/* Editor */}
         <View style={{
           borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
           overflow: 'hidden', backgroundColor: theme.colors.card,
@@ -350,22 +409,19 @@ export default function EditNoteScreen({ route, navigation }: any) {
           )}
         </View>
 
-        <View style={{ gap: theme.spacing(2) }}>
-          {gridItems.length > 0 && (
-            <ImageGrid
-              items={gridItems}
-              onLongPress={(id) => {
-                if (isEditing) {
-                  // delete existing asset elsewhere if you want
-                } else {
-                  const idx = -id - 1;
-                  const rel = draftImages[idx];
-                  setConfirmRemoveDraftImg(rel);
-                }
-              }}
-            />
-          )}
-        </View>
+        {/* (可选) 你的外部图片预览 */}
+        {gridItems.length > 0 && (
+          <ImageGrid
+            items={gridItems}
+            onLongPress={(id) => {
+              if (!isEditing) {
+                const idx = -id - 1;
+                const rel = draftImages[idx];
+                setConfirmRemoveDraftImg(rel);
+              }
+            }}
+          />
+        )}
 
         <View style={{ flexDirection: 'row', gap: theme.spacing(3) }}>
           <CustomButton label="Save" onPress={onSave} loading={saving} />
@@ -373,6 +429,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
         </View>
       </ScrollView>
 
+      {/* Leave keep draft */}
       <ConfirmDialog
         visible={confirmLeaveKeepDraft}
         title="Leave without saving?"
@@ -387,6 +444,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
         }}
       />
 
+      {/* Discard all */}
       <ConfirmDialog
         visible={confirmDiscard}
         danger
@@ -404,6 +462,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
         }}
       />
 
+      {/* Remove one draft image */}
       <ConfirmDialog
         visible={!!confirmRemoveDraftImg}
         danger

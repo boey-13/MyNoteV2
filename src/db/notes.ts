@@ -1,5 +1,6 @@
 // src/db/notes.ts
 import { getDB, nowISO } from './sqlite';
+import { getCurrentUserId } from '../utils/session';
 import { Note } from './types';
 
 function mapRows<T = any>(rows: any): T[] {
@@ -12,65 +13,80 @@ function placeholders(n: number): string {
   return Array.from({ length: n }, () => '?').join(', ');
 }
 
+async function currentUserIdOrThrow(): Promise<number> {
+  const uid = await getCurrentUserId();
+  if (!uid && uid !== 0) throw new Error('No active user session');
+  return uid;
+}
+
 /** ===== Basic listings ===== */
 export async function listNotes(includeDeleted = false): Promise<Note[]> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const res = await db.executeSql(
     includeDeleted
-      ? 'SELECT * FROM notes ORDER BY updated_at DESC;'
-      : 'SELECT * FROM notes WHERE is_deleted = 0 ORDER BY updated_at DESC;'
+      ? 'SELECT * FROM notes WHERE user_id = ? ORDER BY updated_at DESC;'
+      : 'SELECT * FROM notes WHERE is_deleted = 0 AND user_id = ? ORDER BY updated_at DESC;',
+    [uid]
   );
   return mapRows<Note>(res[0].rows);
 }
 
 export async function listDeleted(): Promise<Note[]> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const res = await db.executeSql(
-    'SELECT * FROM notes WHERE is_deleted = 1 ORDER BY deleted_at DESC, updated_at DESC;'
+    'SELECT * FROM notes WHERE is_deleted = 1 AND user_id = ? ORDER BY deleted_at DESC, updated_at DESC;',
+    [uid]
   );
   return mapRows<Note>(res[0].rows);
 }
 
 export async function listFavorites(limit = 5): Promise<Note[]> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const res = await db.executeSql(
-    'SELECT * FROM notes WHERE is_deleted = 0 AND is_favorite = 1 ORDER BY updated_at DESC LIMIT ?;',
-    [limit]
+    'SELECT * FROM notes WHERE is_deleted = 0 AND is_favorite = 1 AND user_id = ? ORDER BY updated_at DESC LIMIT ?;',
+    [uid, limit]
   );
   return mapRows<Note>(res[0].rows);
 }
 
 export async function listNotesByFolder(folderId: number | null): Promise<Note[]> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   if (folderId == null) {
-    const res = await db.executeSql('SELECT * FROM notes WHERE folder_id IS NULL AND is_deleted = 0 ORDER BY updated_at DESC;');
+    const res = await db.executeSql('SELECT * FROM notes WHERE folder_id IS NULL AND is_deleted = 0 AND user_id = ? ORDER BY updated_at DESC;', [uid]);
     return mapRows<Note>(res[0].rows);
   }
-  const res = await db.executeSql('SELECT * FROM notes WHERE folder_id = ? AND is_deleted = 0 ORDER BY updated_at DESC;', [folderId]);
+  const res = await db.executeSql('SELECT * FROM notes WHERE folder_id = ? AND is_deleted = 0 AND user_id = ? ORDER BY updated_at DESC;', [folderId, uid]);
   return mapRows<Note>(res[0].rows);
 }
 
 /** ===== CRUD ===== */
 export async function getNote(id: number): Promise<Note | null> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
-  const res = await db.executeSql('SELECT * FROM notes WHERE id = ? LIMIT 1;', [id]);
+  const res = await db.executeSql('SELECT * FROM notes WHERE id = ? AND user_id = ? LIMIT 1;', [id, uid]);
   return res[0].rows.length ? (res[0].rows.item(0) as Note) : null;
 }
 
 export async function createNote(input: { title: string; content?: string; folder_id?: number | null; }): Promise<Note> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const now = nowISO();
   const { title, content = '', folder_id = null } = input;
   await db.executeSql(
-    `INSERT INTO notes (title, content, folder_id, is_favorite, is_deleted, created_at, updated_at, version)
-     VALUES (?, ?, ?, 0, 0, ?, ?, 1);`,
-    [title, content, folder_id, now, now]
+    `INSERT INTO notes (title, content, folder_id, user_id, is_favorite, is_deleted, created_at, updated_at, version)
+     VALUES (?, ?, ?, ?, 0, 0, ?, ?, 1);`,
+    [title, content, folder_id, uid, now, now]
   );
   const row = await db.executeSql('SELECT * FROM notes WHERE id = last_insert_rowid();');
   return row[0].rows.item(0) as Note;
 }
 
 export async function updateNote(id: number, changes: Partial<Pick<Note,'title'|'content'|'folder_id'|'is_favorite'>>): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const fields: string[] = [];
   const params: any[] = [];
@@ -80,70 +96,88 @@ export async function updateNote(id: number, changes: Partial<Pick<Note,'title'|
   if (changes.is_favorite !== undefined) { fields.push('is_favorite = ?'); params.push(changes.is_favorite); }
   fields.push('updated_at = ?'); params.push(nowISO());
   fields.push('version = version + 1');
-  params.push(id);
-  const sql = `UPDATE notes SET ${fields.join(', ')} WHERE id = ?;`;
+  params.push(uid, id);
+  const sql = `UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND user_id = ?;`;
   await db.executeSql(sql, params);
 }
 
 export async function softDeleteNote(id: number): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   await db.executeSql(
-    'UPDATE notes SET is_deleted = 1, deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ?;',
-    [nowISO(), nowISO(), id]
+    'UPDATE notes SET is_deleted = 1, deleted_at = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?;',
+    [nowISO(), nowISO(), id, uid]
   );
 }
 
 export async function restoreNote(id: number): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   await db.executeSql(
-    'UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ?, version = version + 1 WHERE id = ?;',
-    [nowISO(), id]
+    'UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?;',
+    [nowISO(), id, uid]
   );
 }
 
 export async function deleteNotePermanent(id: number): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
-  await db.executeSql('DELETE FROM notes WHERE id = ?;', [id]);
+  await db.executeSql('DELETE FROM notes WHERE id = ? AND user_id = ?;', [id, uid]);
 }
 
 export async function toggleFavorite(id: number, fav: boolean): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   await db.executeSql(
-    'UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id = ?;',
-    [fav ? 1 : 0, nowISO(), id]
+    'UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?;',
+    [fav ? 1 : 0, nowISO(), id, uid]
+  );
+}
+
+/** Set or clear folder for a note (null to clear). */
+export async function setNoteFolder(noteId: number, folderId: number | null): Promise<void> {
+  const uid = await currentUserIdOrThrow();
+  const db = await getDB();
+  await db.executeSql(
+    'UPDATE notes SET folder_id = ?, updated_at = ?, version = version + 1 WHERE id = ? AND user_id = ?;',
+    [folderId, nowISO(), noteId, uid]
   );
 }
 
 /** ===== Batch operations (Step 5) ===== */
 export async function restoreNotes(ids: number[]): Promise<void> {
   if (!ids.length) return;
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const ph = placeholders(ids.length);
   await db.executeSql(
-    `UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ?, version = version + 1 WHERE id IN (${ph});`,
-    [nowISO(), ...ids]
+    `UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ?, version = version + 1 WHERE id IN (${ph}) AND user_id = ?;`,
+    [nowISO(), ...ids, uid]
   );
 }
 
 export async function deleteNotesPermanent(ids: number[]): Promise<void> {
   if (!ids.length) return;
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const ph = placeholders(ids.length);
-  await db.executeSql(`DELETE FROM notes WHERE id IN (${ph});`, [...ids]);
+  await db.executeSql(`DELETE FROM notes WHERE id IN (${ph}) AND user_id = ?;`, [...ids, uid]);
 }
 
 export async function emptyRecycleBin(): Promise<void> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
-  await db.executeSql('DELETE FROM notes WHERE is_deleted = 1;');
+  await db.executeSql('DELETE FROM notes WHERE is_deleted = 1 AND user_id = ?;', [uid]);
 }
 
 export async function toggleFavorites(ids: number[], fav: boolean): Promise<void> {
   if (!ids.length) return;
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const ph = placeholders(ids.length);
   await db.executeSql(
-    `UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id IN (${ph});`,
-    [fav ? 1 : 0, nowISO(), ...ids]
+    `UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id IN (${ph}) AND user_id = ?;`,
+    [fav ? 1 : 0, nowISO(), ...ids, uid]
   );
 }
 
@@ -160,12 +194,17 @@ export type SearchOptions = {
 };
 
 export async function searchNotes(query: string, opts: SearchOptions = {}): Promise<Note[]> {
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   const q = (query ?? '').trim();
   const terms = q ? q.split(/\s+/) : [];
 
   const where: string[] = [];
   const params: any[] = [];
+
+  // user filter (always first)
+  where.push('user_id = ?');
+  params.push(uid);
 
   // deleted filter
   if (!opts.includeDeleted) {

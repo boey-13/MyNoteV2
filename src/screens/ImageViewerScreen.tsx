@@ -9,9 +9,6 @@ export default function ImageViewerScreen({ route, navigation }: any) {
   const { relPath, title } = route.params as RouteParams;
   const uri = 'file://' + RNFS.DocumentDirectoryPath + relPath;
 
-  React.useEffect(() => {
-    navigation.setOptions({ title: title ?? 'Image' });
-  }, [navigation, title]);
 
   // Use ScrollView zoom for simple pinch-to-zoom experience
   return (

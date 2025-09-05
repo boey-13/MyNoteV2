@@ -1,12 +1,13 @@
 // src/screens/HomeScreen.tsx
 import React, { useCallback, useEffect, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View, ScrollView as HScrollView, Pressable } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
-import { listFavorites, listNotes } from '../db/notes';
+import { listFavorites, listNotes, listNotesByFolder } from '../db/notes';
 import NoteCard from '../components/NoteCard';
 import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
 import { exportAllToJson } from '../utils/exporter';
+import { listFolders } from '../db/folders';
 
 
 export default function HomeScreen({ navigation }: any) {
@@ -14,11 +15,23 @@ export default function HomeScreen({ navigation }: any) {
   const [notes, setNotes] = useState<any[]>([]);
   const [favs, setFavs] = useState<any[]>([]);
   const [refreshing, setRefreshing] = useState(false);
+  const [folders, setFolders] = useState<{ id: number; name: string }[]>([]);
+  const [selectedFolder, setSelectedFolder] = useState<'ALL' | 'NULL' | number>('ALL');
 
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [n, f] = await Promise.all([listNotes(false), listFavorites(5)]);
+      const [fs, f] = await Promise.all([listFolders(), listFavorites(5)]);
+      setFolders(fs);
+      // load notes for current filter
+      let n = [] as any[];
+      if (selectedFolder === 'ALL') {
+        n = await listNotes(false);
+      } else if (selectedFolder === 'NULL') {
+        n = await listNotesByFolder(null);
+      } else {
+        n = await listNotesByFolder(selectedFolder as number);
+      }
       setNotes(n);
       setFavs(f);
     } catch (e: any) {
@@ -26,12 +39,17 @@ export default function HomeScreen({ navigation }: any) {
     } finally {
       setRefreshing(false);
     }
-  }, []);
+  }, [selectedFolder]);
 
   useEffect(() => {
     const unsub = navigation.addListener('focus', load);
     return unsub;
   }, [navigation, load]);
+
+  // Reload notes immediately when folder selection changes
+  useEffect(() => {
+    load();
+  }, [selectedFolder, load]);
 
   async function onExport() {
     try {
@@ -53,22 +71,46 @@ export default function HomeScreen({ navigation }: any) {
         <CustomButton variant="outline" label="Export All Notes (JSON)" onPress={onExport} />
       </View>
 
-      {favs.length > 0 && (
-        <View style={{ marginBottom: theme.spacing(3) }}>
-          <Text style={{ fontFamily: theme.fonts.semibold, fontSize: 18, marginBottom: theme.spacing(2) }}>
-            Favorite Notes
-          </Text>
-          {favs.map(n => (
-            <NoteCard
-              key={`fav-${n.id}`}
-              title={n.title}
-              subtitle={n.content}
-              favorite
-              onPress={() => navigation.navigate('NoteDetails', { noteId: n.id })}
-            />
-          ))}
-        </View>
-      )}
+      {/* Folders Row */}
+      <View style={{ marginBottom: theme.spacing(3) }}>
+        <Text style={{ fontFamily: theme.fonts.semibold, fontSize: 18, marginBottom: theme.spacing(2) }}>
+          Folders
+        </Text>
+        <HScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={{ paddingRight: theme.spacing(2) }}
+        >
+          {[{ id: -1, name: 'All' } as any, { id: -2, name: 'No folder' } as any, ...folders].map((f) => {
+            const value: 'ALL' | 'NULL' | number = f.id === -1 ? 'ALL' : f.id === -2 ? 'NULL' : f.id;
+            const isActive = selectedFolder === value;
+            return (
+              <Pressable
+                key={`folder-chip-${f.id}`}
+                onPress={() => setSelectedFolder(value)}
+                style={{
+                  paddingVertical: theme.spacing(2),
+                  paddingHorizontal: theme.spacing(3),
+                  borderRadius: theme.radius.lg,
+                  borderWidth: 1,
+                  borderColor: isActive ? theme.colors.accent : theme.colors.border,
+                  backgroundColor: isActive ? theme.colors.accent : 'transparent',
+                  marginRight: theme.spacing(2),
+                }}
+              >
+                <Text style={{
+                  color: isActive ? '#fff' : theme.colors.text,
+                  fontFamily: theme.fonts.semibold,
+                }}>
+                  {f.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </HScrollView>
+      </View>
+
+      {/* Favorite section moved to Favorites tab */}
 
       <Text style={{ fontFamily: theme.fonts.semibold, fontSize: 18, marginBottom: theme.spacing(2) }}>
         All Notes
