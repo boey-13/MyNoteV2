@@ -1,3 +1,4 @@
+// src/screens/NoteDetailsScreen.tsx
 import React, { useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
@@ -73,7 +74,9 @@ export default function NoteDetailsScreen({ route, navigation }: any) {
           try {
             await softDeleteNote(note.id);
             showToast.success('Moved to bin');
-            navigation.goBack();
+            setConfirmTrash(false);
+            // Jump to the Recycle tab so user sees the updated list
+            navigation.navigate('Tabs', { screen: 'Recycle' });
           } catch (e: any) {
             showToast.error(e?.message ?? 'Delete failed');
           }

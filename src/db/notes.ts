@@ -7,12 +7,33 @@ function mapRows<T = any>(rows: any): T[] {
   return out;
 }
 
+function placeholders(n: number): string {
+  return Array.from({ length: n }, () => '?').join(', ');
+}
+
 export async function listNotes(includeDeleted = false): Promise<Note[]> {
   const db = await getDB();
   const res = await db.executeSql(
     includeDeleted
       ? 'SELECT * FROM notes ORDER BY updated_at DESC;'
       : 'SELECT * FROM notes WHERE is_deleted = 0 ORDER BY updated_at DESC;'
+  );
+  return mapRows<Note>(res[0].rows);
+}
+
+export async function listDeleted(): Promise<Note[]> {
+  const db = await getDB();
+  const res = await db.executeSql(
+    'SELECT * FROM notes WHERE is_deleted = 1 ORDER BY deleted_at DESC, updated_at DESC;'
+  );
+  return mapRows<Note>(res[0].rows);
+}
+
+export async function listFavorites(limit = 5): Promise<Note[]> {
+  const db = await getDB();
+  const res = await db.executeSql(
+    'SELECT * FROM notes WHERE is_deleted = 0 AND is_favorite = 1 ORDER BY updated_at DESC LIMIT ?;',
+    [limit]
   );
   return mapRows<Note>(res[0].rows);
 }
@@ -79,7 +100,6 @@ export async function restoreNote(id: number): Promise<void> {
 
 export async function deleteNotePermanent(id: number): Promise<void> {
   const db = await getDB();
-  // This will also delete note_assets due to FK CASCADE.
   await db.executeSql('DELETE FROM notes WHERE id = ?;', [id]);
 }
 
@@ -88,5 +108,39 @@ export async function toggleFavorite(id: number, fav: boolean): Promise<void> {
   await db.executeSql(
     'UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id = ?;',
     [fav ? 1 : 0, nowISO(), id]
+  );
+}
+
+/* ===== Batch operations for Step 5 ===== */
+
+export async function restoreNotes(ids: number[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDB();
+  const ph = placeholders(ids.length);
+  await db.executeSql(
+    `UPDATE notes SET is_deleted = 0, deleted_at = NULL, updated_at = ?, version = version + 1 WHERE id IN (${ph});`,
+    [nowISO(), ...ids]
+  );
+}
+
+export async function deleteNotesPermanent(ids: number[]): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDB();
+  const ph = placeholders(ids.length);
+  await db.executeSql(`DELETE FROM notes WHERE id IN (${ph});`, [...ids]);
+}
+
+export async function emptyRecycleBin(): Promise<void> {
+  const db = await getDB();
+  await db.executeSql('DELETE FROM notes WHERE is_deleted = 1;');
+}
+
+export async function toggleFavorites(ids: number[], fav: boolean): Promise<void> {
+  if (!ids.length) return;
+  const db = await getDB();
+  const ph = placeholders(ids.length);
+  await db.executeSql(
+    `UPDATE notes SET is_favorite = ?, updated_at = ?, version = version + 1 WHERE id IN (${ph});`,
+    [fav ? 1 : 0, nowISO(), ...ids]
   );
 }
