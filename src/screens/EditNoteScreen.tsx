@@ -351,11 +351,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
         </View>
 
         <View style={{ gap: theme.spacing(2) }}>
-          <View style={{ flexDirection: 'row', gap: theme.spacing(3), flexWrap: 'wrap' }}>
-            <CustomButton variant="outline" label="Add Image (grid)" onPress={onAddImage} />
-            <CustomButton variant="outline" label="Insert Inline Image" onPress={onInsertInlineImage} />
-          </View>
-
           {gridItems.length > 0 && (
             <ImageGrid
               items={gridItems}
