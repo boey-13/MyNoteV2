@@ -1,6 +1,6 @@
 // src/screens/SearchScreen.tsx
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import NoteCard from '../components/NoteCard';
 import { listNotes, searchNotes, SearchOptions, SearchSort } from '../db/notes';
@@ -8,8 +8,40 @@ import { getRecentSearches, addRecentSearch, clearRecentSearches } from '../util
 import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
 import { listFolders } from '../db/folders';
+import RenderHtml from 'react-native-render-html';
 
 type FolderOpt = { label: string; value: number | 'ALL' | 'NULL' };
+
+const stripImages = (html: string) => html.replace(/<img[\s\S]*?>/gi, '');
+
+
+const renderPreview = (raw?: string) => {
+  const html = (raw ?? '').trim();
+  
+  if (!html) return <Text style={{color:'#666'}}>No content</Text>;
+
+
+  if (!html.startsWith('<')) {
+    return <Text numberOfLines={3} style={{color:'#666', lineHeight:20}}>{html}</Text>;
+  }
+
+
+  const safe = stripImages(html).trim();
+  if (!safe) return <Text style={{color:'#666'}}>(image only)</Text>;
+
+
+  try {
+    const textContent = safe.replace(/<[^>]*>/g, '').trim();
+    if (textContent) {
+      return <Text numberOfLines={3} style={{color:'#666', lineHeight:20}}>{textContent}</Text>;
+    } else {
+      return <Text style={{color:'#666'}}>(image only)</Text>;
+    }
+  } catch (e) {
+    console.log('Error extracting text content:', e);
+    return <Text style={{color:'#666'}}>Error loading content</Text>;
+  }
+};
 
 export default function SearchScreen({ navigation }: any) {
   const { theme } = useAppTheme();
@@ -26,6 +58,7 @@ export default function SearchScreen({ navigation }: any) {
   const [recents, setRecents] = useState<string[]>([]);
 
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
 
   async function loadFolders() {
     const rows = await listFolders();
@@ -84,111 +117,316 @@ export default function SearchScreen({ navigation }: any) {
   }
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView contentContainerStyle={{ padding: theme.spacing(4), gap: theme.spacing(3) }}>
-        {/* Search bar */}
-        <View style={{
-          backgroundColor: theme.colors.card,
-          borderRadius: theme.radius.md,
-          borderWidth: 1, borderColor: theme.colors.border,
-          paddingHorizontal: theme.spacing(4), paddingVertical: theme.spacing(2),
-        }}>
-          <TextInput
-            placeholder="Search by title or content"
-            placeholderTextColor={theme.colors.mutedText}
-            value={query}
-            onChangeText={setQuery}
-            onSubmitEditing={onSubmit}
-            style={{ fontFamily: theme.fonts.regular, color: theme.colors.text, paddingVertical: theme.spacing(2) }}
-          />
-        </View>
-
-        {/* Filters */}
-        <View style={{ flexDirection: 'row', gap: theme.spacing(3) }}>
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.semibold, marginBottom: theme.spacing(1) }}>Folder</Text>
-            <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, backgroundColor: theme.colors.card }}>
-              <Picker selectedValue={folder} onValueChange={(v) => setFolder(v)} dropdownIconColor={theme.colors.mutedText}>
-                {folderOpts.map(opt => (<Picker.Item key={`${opt.label}-${opt.value}`} label={opt.label} value={opt.value} />))}
-              </Picker>
+    <View style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView style={styles.content}>
+          {/* Search Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Search Notes</Text>
+            
+            {/* Search bar */}
+            <View style={styles.searchContainer}>
+              <TextInput
+                placeholder="Search by title or content..."
+                placeholderTextColor="#999"
+                value={query}
+                onChangeText={setQuery}
+                onSubmitEditing={onSubmit}
+                style={styles.searchInput}
+              />
             </View>
-          </View>
 
-          <View style={{ flex: 1 }}>
-            <Text style={{ fontFamily: theme.fonts.semibold, marginBottom: theme.spacing(1) }}>Sort</Text>
-            <View style={{ borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md, backgroundColor: theme.colors.card }}>
-              <Picker selectedValue={sort} onValueChange={(v) => setSort(v)} dropdownIconColor={theme.colors.mutedText}>
-                <Picker.Item label="Updated (newest)" value="updated_desc" />
-                <Picker.Item label="Title (A→Z)" value="title_asc" />
-                <Picker.Item label="Favorite first" value="favorite_first" />
-              </Picker>
-            </View>
-          </View>
-        </View>
+            {/* Recent searches */}
+            {recents.length > 0 && (
+              <View style={styles.recentSection}>
+                <View style={styles.recentHeader}>
+                  <Text style={styles.recentTitle}>Recent searches</Text>
+                  <TouchableOpacity onPress={async () => { await clearRecentSearches(); await loadRecents(); }}>
+                    <Text style={styles.clearButton}>Clear</Text>
+                  </TouchableOpacity>
+                </View>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.recentScroll}>
+                  {recents.map((r, i) => (
+                    <TouchableOpacity
+                      key={`${r}-${i}`}
+                      onPress={() => setQuery(r)}
+                      style={styles.recentChip}
+                    >
+                      <Text style={styles.recentChipText}>
+                        {r}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+            )}
 
-        {/* Favorite-only chip */}
-        <Pressable
-          onPress={() => setFavoritesOnly(v => !v)}
-          style={{
-            alignSelf: 'flex-start',
-            paddingHorizontal: theme.spacing(3), paddingVertical: theme.spacing(2),
-            borderRadius: theme.radius.md, borderWidth: 1,
-            borderColor: favoritesOnly ? theme.colors.accent : theme.colors.border,
-            backgroundColor: favoritesOnly ? theme.colors.accent : 'transparent',
-          }}
-        >
-          <Text style={{ color: favoritesOnly ? '#fff' : theme.colors.text, fontFamily: theme.fonts.semibold }}>
-            {favoritesOnly ? '★ Favorites only' : '☆ Favorites only'}
-          </Text>
-        </Pressable>
-
-        {/* Recent searches */}
-        {recents.length > 0 && (
-          <View>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: theme.spacing(2) }}>
-              <Text style={{ fontFamily: theme.fonts.semibold }}>Recent searches</Text>
-              <Pressable onPress={async () => { await clearRecentSearches(); await loadRecents(); }}>
-                <Text style={{ fontFamily: theme.fonts.regular, color: theme.colors.mutedText }}>Clear</Text>
+            {/* Filter Chips */}
+            <View style={styles.filterContainer}>
+              <Pressable
+                onPress={() => setFavoritesOnly(v => !v)}
+                style={[
+                  styles.filterChip,
+                  favoritesOnly && styles.filterChipActive
+                ]}
+              >
+                <Text style={[
+                  styles.filterChipText,
+                  favoritesOnly && styles.filterChipTextActive
+                ]}>
+                  {favoritesOnly ? '★ Favorites only' : '☆ Favorites only'}
+                </Text>
               </Pressable>
             </View>
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: theme.spacing(2) }}>
-              {recents.map((r, i) => (
-                <Pressable
-                  key={`${r}-${i}`}
-                  onPress={() => setQuery(r)}
-                  style={{
-                    borderWidth: 1, borderColor: theme.colors.border,
-                    paddingHorizontal: theme.spacing(3), paddingVertical: theme.spacing(2),
-                    borderRadius: theme.radius.md, backgroundColor: theme.colors.card,
-                  }}
-                >
-                  <Text style={{ fontFamily: theme.fonts.regular, color: theme.colors.text }}>{r}</Text>
-                </Pressable>
-              ))}
+
+            {/* Advanced Filters */}
+            <View style={styles.advancedFilters}>
+              <View style={styles.filterRow}>
+                <Text style={styles.filterLabel}>Folder</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker selectedValue={folder} onValueChange={(v) => setFolder(v)}>
+                    {folderOpts.map(opt => (
+                      <Picker.Item key={`${opt.label}-${opt.value}`} label={opt.label} value={opt.value} />
+                    ))}
+                  </Picker>
+                </View>
+              </View>
+
+              <View style={styles.filterRow}>
+                <Text style={styles.filterLabel}>Sort</Text>
+                <View style={styles.pickerContainer}>
+                  <Picker selectedValue={sort} onValueChange={(v) => setSort(v)}>
+                    <Picker.Item label="Updated (newest)" value="updated_desc" />
+                    <Picker.Item label="Title (A→Z)" value="title_asc" />
+                    <Picker.Item label="Favorite first" value="favorite_first" />
+                  </Picker>
+                </View>
+              </View>
             </View>
           </View>
-        )}
 
-        {/* Results */}
-        <View style={{ marginTop: theme.spacing(1) }}>
-          {loading ? (
-            <Text style={{ fontFamily: theme.fonts.regular, color: theme.colors.mutedText }}>Searching…</Text>
-          ) : results.length === 0 ? (
-            <Text style={{ fontFamily: theme.fonts.regular, color: theme.colors.mutedText }}>No results</Text>
-          ) : (
-            results.map(n => (
-              <NoteCard
-                key={n.id}
-                title={n.title}
-                subtitle={n.content}
-                favorite={!!n.is_favorite}
-                onPress={() => navigation.navigate('NoteDetails', { noteId: n.id })}
-                onLongPress={() => navigation.navigate('EditNote', { noteId: n.id })}
-              />
-            ))
-          )}
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          {/* Results Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Search Results</Text>
+            {loading ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>Searching...</Text>
+              </View>
+            ) : results.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No results found</Text>
+              </View>
+            ) : (
+              <View style={styles.notesGrid}>
+                {results.map(n => (
+                  <TouchableOpacity 
+                    key={n.id} 
+                    style={styles.noteCard}
+                    onPress={() => navigation.navigate('NoteDetails', { noteId: n.id })}
+                  >
+                    <Text style={styles.noteTitle} numberOfLines={2}>
+                      {n.title || 'Untitled'}
+                    </Text>
+                    <View style={styles.noteContentContainer}>
+                      {renderPreview(n.content)}
+                    </View>
+                    {n.is_favorite ? (
+                      <View style={styles.favoriteIndicator}>
+                        <Text style={styles.favoriteIcon}>★</Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
+
+const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    fontFamily: 'Poppins-Bold',
+  },
+  searchContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+    marginBottom: 15,
+  },
+  searchInput: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: 'Poppins-Regular',
+  },
+  filterContainer: {
+    flexDirection: 'row',
+    marginBottom: 15,
+  },
+  filterChip: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E0E0E0',
+    backgroundColor: 'transparent',
+    marginRight: 10,
+  },
+  filterChipActive: {
+    backgroundColor: '#455B96',
+    borderColor: '#455B96',
+  },
+  filterChipText: {
+    color: '#333',
+    fontFamily: 'Poppins-SemiBold',
+    fontSize: 14,
+  },
+  filterChipTextActive: {
+    color: '#FFFFFF',
+  },
+  advancedFilters: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+  },
+  filterRow: {
+    marginBottom: 15,
+  },
+  filterLabel: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: 'Poppins-Bold',
+  },
+  pickerContainer: {
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+  },
+  recentSection: {
+    marginBottom: 15,
+  },
+  recentHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  recentTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    fontFamily: 'Poppins-Bold',
+  },
+  clearButton: {
+    fontSize: 14,
+    color: '#455B96',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  recentScroll: {
+    flexDirection: 'row',
+  },
+  recentChip: {
+    backgroundColor: '#E8EDF7',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  recentChipText: {
+    fontSize: 12,
+    color: '#455B96',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  emptyState: {
+    paddingVertical: 40,
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 16,
+    color: '#999',
+    fontFamily: 'Poppins-Regular',
+  },
+  notesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  noteCard: {
+    width: (width - 60) / 2,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    minHeight: 120,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    position: 'relative',
+  },
+  noteTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: 'Poppins-Bold',
+  },
+  noteContent: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    fontFamily: 'Poppins-Regular',
+  },
+  noteContentContainer: {
+    maxHeight: 60, 
+    overflow: 'hidden',
+  },
+  favoriteIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  favoriteIcon: {
+    fontSize: 16,
+    color: '#FFD700',
+    fontWeight: 'bold',
+  },
+});

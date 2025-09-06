@@ -1,7 +1,7 @@
 // db/users.ts
 import { getDB, nowISO } from './sqlite';
 
-export type User = { id: number; username: string; email: string; password: string; created_at: string };
+export type User = { id: number; username: string; email: string; password: string; avatar?: string; created_at: string };
 
 // For local demo only: plain text storage (for educational purposes). Production should use "salted hash"!
 export async function createUser(username: string, email: string, password: string): Promise<User> {
@@ -116,6 +116,56 @@ export async function createUserWithId(id: number, username: string, email: stri
         (_, e) => { 
           console.error('Error creating user with ID:', e);
           reject(new Error(`Failed to create user: ${e.message || 'Unknown database error'}`));
+          return false; 
+        }
+      );
+    });
+  });
+}
+
+export async function updateUser(id: number, updates: { username?: string; email?: string; avatar?: string }): Promise<User> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      const fields = [];
+      const values = [];
+      
+      if (updates.username !== undefined) {
+        fields.push('username = ?');
+        values.push(updates.username);
+      }
+      if (updates.email !== undefined) {
+        fields.push('email = ?');
+        values.push(updates.email);
+      }
+      if (updates.avatar !== undefined) {
+        fields.push('avatar = ?');
+        values.push(updates.avatar);
+      }
+      
+      if (fields.length === 0) {
+        reject(new Error('No fields to update'));
+        return;
+      }
+      
+      values.push(id);
+      
+      tx.executeSql(
+        `UPDATE users SET ${fields.join(', ')} WHERE id = ?`,
+        values,
+        (_, rs) => {
+          tx.executeSql(`SELECT id, username, email, password, avatar, created_at FROM users WHERE id = ?`, [id],
+            (_, r2) => resolve(r2.rows.item(0)),
+            (_, e2) => { 
+              console.error('Error fetching updated user:', e2);
+              reject(new Error(`Failed to fetch updated user: ${e2.message || 'Unknown error'}`)); 
+              return false; 
+            }
+          );
+        },
+        (_, e) => { 
+          console.error('Error updating user:', e);
+          reject(new Error(`Failed to update user: ${e.message || 'Unknown database error'}`));
           return false; 
         }
       );

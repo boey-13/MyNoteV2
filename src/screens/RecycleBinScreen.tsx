@@ -1,6 +1,6 @@
 // src/screens/RecycleBinScreen.tsx
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { RefreshControl, ScrollView, Text, View } from 'react-native';
+import { RefreshControl, ScrollView, Text, View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import {
   deleteNotesPermanent,
@@ -13,6 +13,55 @@ import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { showToast } from '../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
+import RenderHtml from 'react-native-render-html';
+
+const stripImages = (html: string) => html.replace(/<img[\s\S]*?>/gi, '');
+
+const renderPreview = (raw?: string) => {
+  const html = (raw ?? '').trim();
+  if (!html) return <Text style={{color:'#666'}}>No content</Text>;
+
+  // Plain text
+  if (!html.startsWith('<')) {
+    return <Text numberOfLines={3} style={{color:'#666', lineHeight:20}}>{html}</Text>;
+  }
+
+  const safe = stripImages(html).trim();
+  if (!safe) return <Text style={{color:'#666'}}>(image only)</Text>;
+
+  return (
+    <RenderHtml
+      contentWidth={200}
+      source={{ html: safe }}
+      tagsStyles={{
+        p: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20 },
+        div:{ margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20 },
+        span: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20 },
+        strong: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20, fontWeight:'bold' },
+        em: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20, fontStyle:'italic' },
+        h1: { margin:0, padding:0, fontSize:16, color:'#666', lineHeight:20, fontWeight:'bold' },
+        h2: { margin:0, padding:0, fontSize:15, color:'#666', lineHeight:20, fontWeight:'bold' },
+        h3: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20, fontWeight:'bold' },
+        ul: { margin:0, padding:0 },
+        ol: { margin:0, padding:0 },
+        li: { margin:0, padding:0, fontSize:14, color:'#666', lineHeight:20 },
+      }}
+      renderersProps={{ 
+        text: { numberOfLines: 3 },
+        p: { numberOfLines: 3 },
+        div: { numberOfLines: 3 },
+        span: { numberOfLines: 3 },
+      }}
+      renderers={{
+        text: ({ TDefaultRenderer, ...props }: any) => (
+          <Text numberOfLines={3} style={{color:'#666', fontSize:14, lineHeight:20}}>
+            {props.children}
+          </Text>
+        ),
+      }}
+    />
+  );
+};
 
 export default function RecycleBinScreen() {
   const { theme } = useAppTheme();
@@ -23,6 +72,7 @@ export default function RecycleBinScreen() {
   const [selectMode, setSelectMode] = useState(false);
   const [selected, setSelected] = useState<Set<number>>(new Set());
   const selectedCount = selected.size;
+
 
   // Double-confirm for Empty Bin
   // 0 = hidden, 1 = first confirm, 2 = final confirm
@@ -108,53 +158,115 @@ export default function RecycleBinScreen() {
   }
 
   return (
-    <ScrollView
-      style={{ flex: 1, padding: theme.spacing(4) }}
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
-    >
-      {/* Top action bar */}
-      <View style={{ flexDirection: 'row', gap: theme.spacing(2), marginBottom: theme.spacing(2) }}>
-        {!selectMode ? (
-          <>
-            <CustomButton label="Select" onPress={() => setSelectMode(true)} />
-            <CustomButton
-              variant="outline"
-              label="Empty Bin"
-              onPress={() => setConfirmEmptyStep(1)}
-            />
-          </>
-        ) : (
-          <>
-            <CustomButton
-              label={allSelected ? 'Unselect All' : 'Select All'}
-              onPress={() => {
-                if (allSelected) setSelected(new Set());
-                else setSelected(new Set(deleted.map(n => n.id)));
-              }}
-            />
-            <CustomButton label={`Restore (${selectedCount})`} onPress={onRestoreSelected} />
-            <CustomButton variant="outline" label={`Delete (${selectedCount})`} onPress={onDeleteSelected} />
-            <CustomButton variant="ghost" label="Cancel" onPress={() => { setSelected(new Set()); setSelectMode(false); }} />
-          </>
-        )}
-      </View>
+    <View style={styles.container}>
+      <ScrollView
+        style={styles.content}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={load} />}
+      >
+        {/* Header Section */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Recycle Bin</Text>
+          <Text style={styles.sectionSubtitle}>
+            {deleted.length} deleted note{deleted.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
 
-      {/* List */}
-      {deleted.length === 0 ? (
-        <Text style={{ fontFamily: theme.fonts.regular, color: theme.colors.mutedText }}>No deleted notes</Text>
-      ) : (
-        deleted.map(n => (
-          <NoteCard
-            key={n.id}
-            title={n.title}
-            subtitle={n.content}
-            selectable={selectMode}
-            selected={selected.has(n.id)}
-            onToggleSelect={() => toggleOne(n.id)}
-            onLongPress={() => setSelectMode(true)}
-          />
-        ))
-      )}
+        {/* Action Buttons */}
+        <View style={styles.actionSection}>
+          {!selectMode ? (
+            <View style={styles.actionRow}>
+              <TouchableOpacity 
+                style={styles.actionButton}
+                onPress={() => setSelectMode(true)}
+              >
+                <Text style={styles.actionButtonText}>Select Notes</Text>
+              </TouchableOpacity>
+              <TouchableOpacity 
+                style={[styles.actionButton, styles.dangerButton]}
+                onPress={() => setConfirmEmptyStep(1)}
+              >
+                <Text style={[styles.actionButtonText, styles.dangerButtonText]}>Empty Bin</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={styles.selectionActions}>
+              <TouchableOpacity 
+                style={styles.selectionButton}
+                onPress={() => {
+                  if (allSelected) setSelected(new Set());
+                  else setSelected(new Set(deleted.map(n => n.id)));
+                }}
+              >
+                <Text style={styles.selectionButtonText}>
+                  {allSelected ? 'Unselect All' : 'Select All'}
+                </Text>
+              </TouchableOpacity>
+              
+              <View style={styles.selectionRow}>
+                <TouchableOpacity 
+                  style={[styles.selectionActionButton, styles.restoreButton]}
+                  onPress={onRestoreSelected}
+                >
+                  <Text style={styles.selectionActionButtonText}>Restore ({selectedCount})</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.selectionActionButton, styles.deleteButton]}
+                  onPress={onDeleteSelected}
+                >
+                  <Text style={styles.selectionActionButtonText}>Delete ({selectedCount})</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <TouchableOpacity 
+                style={styles.cancelButton}
+                onPress={() => { setSelected(new Set()); setSelectMode(false); }}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
+
+        {/* Notes Grid */}
+        <View style={styles.section}>
+          {deleted.length === 0 ? (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyIcon}>🗑️</Text>
+              <Text style={styles.emptyText}>No deleted notes</Text>
+              <Text style={styles.emptySubtext}>Deleted notes will appear here</Text>
+            </View>
+          ) : (
+            <View style={styles.notesGrid}>
+              {deleted.map(n => (
+                <TouchableOpacity 
+                  key={n.id} 
+                  style={[
+                    styles.noteCard,
+                    selectMode && selected.has(n.id) && styles.selectedNoteCard
+                  ]}
+                  onPress={() => selectMode ? toggleOne(n.id) : undefined}
+                  onLongPress={() => setSelectMode(true)}
+                >
+                  {selectMode && (
+                    <View style={styles.selectionIndicator}>
+                      <Text style={styles.selectionIcon}>
+                        {selected.has(n.id) ? '✓' : '○'}
+                      </Text>
+                    </View>
+                  )}
+                  <Text style={styles.noteTitle} numberOfLines={2}>{n.title || 'Untitled'}</Text>
+                  <View style={styles.noteContentContainer}>
+                    {renderPreview(n.content)}
+                  </View>
+                  <Text style={styles.deletedDate}>
+                    Deleted: {new Date(n.deleted_at).toLocaleDateString()}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </ScrollView>
 
       {/* Double-confirm dialogs for Empty Bin */}
       <ConfirmDialog
@@ -177,6 +289,204 @@ export default function RecycleBinScreen() {
         onCancel={() => setConfirmEmptyStep(0)}
         onConfirm={async () => { setConfirmEmptyStep(0); await onEmptyBin(); }}
       />
-    </ScrollView>
+    </View>
   );
 }
+
+const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+    padding: 20,
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Poppins-Bold',
+  },
+  sectionSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    fontFamily: 'Poppins-Regular',
+  },
+  actionSection: {
+    marginBottom: 20,
+  },
+  actionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  actionButton: {
+    flex: 1,
+    backgroundColor: '#455B96',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  actionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+  dangerButton: {
+    backgroundColor: '#DC3545',
+  },
+  dangerButtonText: {
+    color: '#FFFFFF',
+  },
+  selectionActions: {
+    gap: 15,
+  },
+  selectionButton: {
+    backgroundColor: '#E8EDF7',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  selectionButtonText: {
+    color: '#455B96',
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+  selectionRow: {
+    flexDirection: 'row',
+    gap: 10,
+  },
+  selectionActionButton: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  selectionActionButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+  restoreButton: {
+    backgroundColor: '#28A745',
+  },
+  deleteButton: {
+    backgroundColor: '#DC3545',
+  },
+  cancelButton: {
+    backgroundColor: '#6C757D',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-Bold',
+  },
+  emptyState: {
+    paddingVertical: 60,
+    alignItems: 'center',
+  },
+  emptyIcon: {
+    fontSize: 48,
+    marginBottom: 15,
+  },
+  emptyText: {
+    fontSize: 18,
+    color: '#333',
+    fontWeight: 'bold',
+    marginBottom: 5,
+    fontFamily: 'Poppins-Bold',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: '#666',
+    fontFamily: 'Poppins-Regular',
+  },
+  notesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+  },
+  noteCard: {
+    width: (width - 60) / 2,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 15,
+    marginBottom: 15,
+    minHeight: 140,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    position: 'relative',
+  },
+  selectedNoteCard: {
+    backgroundColor: '#E8EDF7',
+    borderColor: '#455B96',
+    borderWidth: 2,
+  },
+  selectionIndicator: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: '#455B96',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectionIcon: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  noteTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: 'Poppins-Bold',
+    paddingRight: 30,
+  },
+  noteContent: {
+    fontSize: 14,
+    color: '#666',
+    lineHeight: 20,
+    fontFamily: 'Poppins-Regular',
+    marginBottom: 8,
+  },
+  noteContentContainer: {
+    maxHeight: 60, // Limit height, equivalent to 3 lines of text
+    overflow: 'hidden',
+    marginBottom: 8,
+  },
+  deletedDate: {
+    fontSize: 12,
+    color: '#999',
+    fontFamily: 'Poppins-Regular',
+    fontStyle: 'italic',
+  },
+});

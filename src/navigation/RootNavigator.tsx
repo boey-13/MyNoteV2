@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState, View, Image } from 'react-native';
+import { AppState, View, Image, Text, StyleSheet, TouchableOpacity, Dimensions } from 'react-native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -27,7 +27,6 @@ import { getCurrentUserId, clearSession } from '../utils/session';
 import { showToast } from '../components/Toast';
 import { runFullSync } from '../utils/sync';
 import { startRealtime, stopRealtime } from '../utils/realtime';
-import { Text } from 'react-native';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
 
@@ -134,7 +133,7 @@ function AppStack() {
   );
 }
 
-// ✅ Custom Drawer: Place Logout at the bottom
+// ✅ Custom Drawer: Modern design with user info and navigation
 function CustomDrawerContent(
   props: DrawerContentComponentProps & { signedIn: boolean; onSignOut: () => void }
 ) {
@@ -143,26 +142,139 @@ function CustomDrawerContent(
   // Debug info
   console.log('CustomDrawerContent - signedIn:', signedIn);
   
+  const handleLogout = async () => {
+    console.log('Logout pressed');
+    await clearSession();
+    showToast.success('Signed out');
+    onSignOut(); // Update state immediately
+    rest.navigation.closeDrawer();
+    rest.navigation.navigate('Auth');
+  };
+
+  const handleSync = async () => {
+    try {
+      await runFullSync();
+      showToast.success('Sync completed');
+      rest.navigation.closeDrawer();
+    } catch (e: any) {
+      showToast.error('Sync failed: ' + (e?.message || 'Unknown error'));
+    }
+  };
+
   return (
-    <DrawerContentScrollView {...rest}>
-      <DrawerItemList {...rest} />
-      {signedIn ? (
-        <>
-          <View style={{ height: 8 }} />
-          <DrawerItem
-            label="Log out"
-            onPress={async () => {
-              console.log('Logout pressed');
-              await clearSession();
-              showToast.success('Signed out');
-              onSignOut(); // Update state immediately
-              rest.navigation.closeDrawer();
-              rest.navigation.navigate('Auth');
-            }}
-          />
-        </>
-      ) : null}
-    </DrawerContentScrollView>
+    <View style={styles.drawerContainer}>
+      <DrawerContentScrollView {...rest} style={styles.drawerScroll}>
+        {/* Header Section */}
+        <View style={styles.drawerHeader}>
+          <View style={styles.logoContainer}>
+            <Image
+              source={require('../../assets/images/logo1.png')}
+              style={styles.logo}
+            />
+          </View>
+          <Text style={styles.appName}>MyNote</Text>
+          <Text style={styles.appVersion}>Version 2.0.0</Text>
+        </View>
+
+        {/* Navigation Items */}
+        <View style={styles.navigationSection}>
+          <Text style={styles.sectionTitle}>Navigation</Text>
+          <View style={styles.navigationItems}>
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => {
+                rest.navigation.navigate('MainApp');
+                rest.navigation.closeDrawer();
+              }}
+            >
+              <Icon name="home" size={20} color="#455B96" />
+              <Text style={styles.navItemText}>Home</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => {
+                rest.navigation.navigate('Profile');
+                rest.navigation.closeDrawer();
+              }}
+            >
+              <Icon name="user" size={20} color="#455B96" />
+              <Text style={styles.navItemText}>Profile</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => {
+                rest.navigation.navigate('Settings');
+                rest.navigation.closeDrawer();
+              }}
+            >
+              <Icon name="settings" size={20} color="#455B96" />
+              <Text style={styles.navItemText}>Settings</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.navItem}
+              onPress={() => {
+                rest.navigation.navigate('About');
+                rest.navigation.closeDrawer();
+              }}
+            >
+              <Icon name="info" size={20} color="#455B96" />
+              <Text style={styles.navItemText}>About</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        {/* Quick Actions */}
+        {signedIn && (
+          <View style={styles.actionsSection}>
+            <Text style={styles.sectionTitle}>Quick Actions</Text>
+            <View style={styles.actionItems}>
+              <TouchableOpacity 
+                style={styles.actionItem}
+                onPress={handleSync}
+              >
+                <Icon name="refresh-cw" size={20} color="#455B96" />
+                <Text style={styles.actionItemText}>Sync Now</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={styles.actionItem}
+                onPress={() => {
+                  rest.navigation.navigate('EditNote');
+                  rest.navigation.closeDrawer();
+                }}
+              >
+                <Icon name="plus" size={20} color="#455B96" />
+                <Text style={styles.actionItemText}>New Note</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        {/* Footer */}
+        <View style={styles.drawerFooter}>
+          {signedIn ? (
+            <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
+              <Icon name="log-out" size={20} color="#FFFFFF" />
+              <Text style={styles.logoutButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity 
+              style={styles.loginButton}
+              onPress={() => {
+                rest.navigation.navigate('Auth');
+                rest.navigation.closeDrawer();
+              }}
+            >
+              <Icon name="log-in" size={20} color="#455B96" />
+              <Text style={styles.loginButtonText}>Sign In</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      </DrawerContentScrollView>
+    </View>
   );
 }
 
@@ -237,7 +349,7 @@ export default function RootNavigator() {
       initialRouteName={signedIn ? 'MainApp' : 'Auth'}
       screenOptions={{
         headerShown: true,
-        // 中间放 logo 图片
+        // Center logo image
         headerTitle: () => (
           <Image
             source={require('../../assets/images/logo1.png')}
@@ -245,11 +357,11 @@ export default function RootNavigator() {
           />
         ),
         headerTitleAlign: 'center',
-        // 左边汉堡（可改色）
+        // Left hamburger menu
         headerLeft: () => <DrawerToggleButton tintColor="#222" />,
-        // 右侧放个等宽占位，确保真正居中
+
         headerRight: () => <View style={{ width: 44 }} />,
-        // 背景与阴影（可按你的主题调）
+
         headerStyle: { 
           backgroundColor: '#E8EDF7',
           shadowColor: '#000',
@@ -290,3 +402,133 @@ export default function RootNavigator() {
     </Drawer.Navigator>
   );
 }
+
+const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  drawerContainer: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  drawerScroll: {
+    flex: 1,
+  },
+  drawerHeader: {
+    backgroundColor: '#455B96',
+    paddingTop: 50,
+    paddingBottom: 30,
+    paddingHorizontal: 20,
+    alignItems: 'center',
+  },
+  logoContainer: {
+    marginBottom: 15,
+  },
+  logo: {
+    width: 80,
+    height: 80,
+    resizeMode: 'contain',
+  },
+  appName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginBottom: 5,
+    fontFamily: 'Poppins-Bold',
+  },
+  appVersion: {
+    fontSize: 14,
+    color: '#E8EDF7',
+    fontFamily: 'Poppins-Regular',
+  },
+  navigationSection: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+  },
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 15,
+    fontFamily: 'Poppins-Bold',
+  },
+  navigationItems: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 10,
+  },
+  navItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  navItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 15,
+    fontFamily: 'Poppins-Regular',
+  },
+  actionsSection: {
+    paddingHorizontal: 20,
+    paddingBottom: 20,
+  },
+  actionItems: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 10,
+  },
+  actionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    borderRadius: 8,
+    marginBottom: 5,
+  },
+  actionItemText: {
+    fontSize: 16,
+    color: '#333',
+    marginLeft: 15,
+    fontFamily: 'Poppins-Regular',
+  },
+  drawerFooter: {
+    paddingHorizontal: 20,
+    paddingVertical: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E9ECEF',
+  },
+  logoutButton: {
+    backgroundColor: '#DC3545',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+  },
+  logoutButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    fontFamily: 'Poppins-Bold',
+  },
+  loginButton: {
+    backgroundColor: '#F8F9FA',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 15,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#455B96',
+  },
+  loginButtonText: {
+    color: '#455B96',
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginLeft: 10,
+    fontFamily: 'Poppins-Bold',
+  },
+});

@@ -76,6 +76,11 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
     current = 7;
     await setSchemaVersion(db, current);
   }
+  if (current < 8) {
+    await migrateToV8(db);
+    current = 8;
+    await setSchemaVersion(db, current);
+  }
 }
 
 async function setSchemaVersion(db: SQLiteDatabase, v: number): Promise<void> {
@@ -277,6 +282,16 @@ async function migrateToV7(db: SQLiteDatabase): Promise<void> {
         )
       `, []);
       tx.executeSql(`CREATE INDEX IF NOT EXISTS idx_syncq_user ON sync_queue(user_id, created_at)`, []);
+      resolve();
+    }, reject);
+  });
+}
+
+async function migrateToV8(db: SQLiteDatabase): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    db.transaction(tx => {
+      // Add avatar column to users table (ignore if already exists)
+      tx.executeSql(`ALTER TABLE users ADD COLUMN avatar TEXT`, [], () => {}, () => false);
       resolve();
     }, reject);
   });

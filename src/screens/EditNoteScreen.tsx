@@ -2,7 +2,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView, Platform, ScrollView, View, Text,
-  Keyboard, InteractionManager, TextInput
+  Keyboard, InteractionManager, TextInput, StyleSheet, Dimensions,
+  TouchableOpacity
 } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import InputWithLabel from '../components/InputWithLabel';
@@ -175,10 +176,14 @@ export default function EditNoteScreen({ route, navigation }: any) {
   }, [editingId]);
 
 
+
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
       if (bypassGuardRef.current) return;
+      
       if (!dirty) return;
+      
+
       e.preventDefault();
       setConfirmLeaveKeepDraft(true);
     });
@@ -302,165 +307,178 @@ export default function EditNoteScreen({ route, navigation }: any) {
     : draftImages.map((p, idx) => ({ id: -idx - 1, uri: toImageUri(p) }));
 
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-      <ScrollView
-        contentContainerStyle={{ padding: theme.spacing(4), gap: theme.spacing(3) }}
-        keyboardShouldPersistTaps="always"
-      >
-        <InputWithLabel
-          ref={titleRef}
-          label="Title"
-          value={title}
-          onChangeText={(t) => { setTitle(t); setDirty(true); }}
-          placeholder="Enter a title"
-          errorText={titleErr}
-        />
-
-        {/* Folder Picker */}
-        <View>
-          <Text style={{ fontFamily: theme.fonts.semibold, marginBottom: theme.spacing(1) }}>Folder</Text>
-          <View style={{
-            borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.card,
-          }}>
-            <Picker
-              selectedValue={folderId}
-              onValueChange={handleFolderChange}
-              dropdownIconColor={theme.colors.mutedText}
-            >
-              {folderOpts.map(opt => (
-                <Picker.Item key={`${opt.label}-${opt.value}`} label={opt.label} value={opt.value} />
-              ))}
-            </Picker>
-          </View>
-        </View>
-
-        {/* Add Folder Dialog */}
-        {showAddFolder && (
-          <View style={{
-            borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
-            backgroundColor: theme.colors.card, padding: theme.spacing(3),
-            marginTop: theme.spacing(2)
-          }}>
-            <Text style={{ 
-              fontFamily: theme.fonts.semibold, 
-              marginBottom: theme.spacing(2),
-              color: theme.colors.text 
-            }}>
-              Create New Folder
+    <View style={styles.container}>
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          style={styles.content}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="always"
+        >
+          {/* Header Section */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>
+              {isEditing ? 'Edit Note' : 'Create Note'}
             </Text>
-            <TextInput
-              style={{
-                borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.sm,
-                padding: theme.spacing(2), fontFamily: theme.fonts.regular,
-                backgroundColor: theme.colors.background, color: theme.colors.text,
-                marginBottom: theme.spacing(2)
-              }}
-              value={newFolderName}
-              onChangeText={setNewFolderName}
-              placeholder="Folder name"
-              placeholderTextColor={theme.colors.mutedText}
-              autoFocus
-            />
-            <View style={{ flexDirection: 'row', gap: theme.spacing(2) }}>
-              <CustomButton
-                label="Cancel"
-                onPress={() => {
-                  setShowAddFolder(false);
-                  setNewFolderName('');
-                }}
-                variant="outline"
-                style={{ flex: 1 }}
+          </View>
+
+          {/* Title Input */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Title</Text>
+            <View style={styles.inputContainer}>
+              <TextInput
+                ref={titleRef}
+                style={styles.titleInput}
+                value={title}
+                onChangeText={(t) => { setTitle(t); setDirty(true); }}
+                placeholder="Enter a title"
+                placeholderTextColor="#999"
               />
-              <CustomButton
-                label="Create"
-                onPress={handleCreateFolder}
-                style={{ flex: 1 }}
-                disabled={!newFolderName.trim()}
+            </View>
+            {titleErr && <Text style={styles.errorText}>{titleErr}</Text>}
+          </View>
+
+          {/* Folder Picker */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Folder</Text>
+            <View style={styles.pickerContainer}>
+              <Picker
+                selectedValue={folderId}
+                onValueChange={handleFolderChange}
+                style={styles.picker}
+              >
+                {folderOpts.map(opt => (
+                  <Picker.Item key={`${opt.label}-${opt.value}`} label={opt.label} value={opt.value} />
+                ))}
+              </Picker>
+            </View>
+          </View>
+
+          {/* Add Folder Dialog */}
+          {showAddFolder && (
+            <View style={styles.addFolderContainer}>
+              <Text style={styles.addFolderTitle}>Create New Folder</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.folderInput}
+                  value={newFolderName}
+                  onChangeText={setNewFolderName}
+                  placeholder="Folder name"
+                  placeholderTextColor="#999"
+                  autoFocus
+                />
+              </View>
+              <View style={styles.addFolderButtons}>
+                <CustomButton
+                  label="Cancel"
+                  onPress={() => {
+                    setShowAddFolder(false);
+                    setNewFolderName('');
+                  }}
+                  variant="outline"
+                  style={styles.addFolderButton}
+                />
+                <CustomButton
+                  label="Create"
+                  onPress={handleCreateFolder}
+                  style={styles.addFolderButton}
+                  disabled={!newFolderName.trim()}
+                />
+              </View>
+            </View>
+          )}
+
+          {/* Toolbar */}
+          <View style={styles.section}>
+            <Text style={styles.label}>Content</Text>
+            <View style={styles.toolbarContainer}>
+              <RichToolbar
+                pointerEvents={navigating ? 'none' : 'auto'}
+                editor={editorRef}
+                actions={[
+                  actions.undo, actions.redo,
+                  actions.setBold, actions.setItalic, actions.setUnderline, actions.setStrikethrough,
+                  actions.insertOrderedList, actions.insertBulletsList,
+                  actions.heading1, actions.heading2, actions.heading3,
+                  actions.insertImage, actions.removeFormat,
+                ]}
+                onPressAddImage={onInsertInlineImage}
+                iconMap={{
+                  [actions.heading1]: () => <Text style={styles.toolbarIcon}>H1</Text>,
+                  [actions.heading2]: () => <Text style={styles.toolbarIcon}>H2</Text>,
+                  [actions.heading3]: () => <Text style={styles.toolbarIcon}>H3</Text>,
+                }}
+                iconTint="#455B96"
+                selectedIconTint="#455B96"
+                style={styles.toolbar}
               />
             </View>
           </View>
-        )}
 
-        {/* Toolbar */}
-        <RichToolbar
-          pointerEvents={navigating ? 'none' : 'auto'}
-          editor={editorRef}
-          actions={[
-            actions.undo, actions.redo,
-            actions.setBold, actions.setItalic, actions.setUnderline, actions.setStrikethrough,
-            actions.insertOrderedList, actions.insertBulletsList,
-            actions.heading1, actions.heading2, actions.heading3,
-            actions.insertImage, actions.removeFormat,
-          ]}
-          onPressAddImage={onInsertInlineImage}
-          iconMap={{
-            [actions.heading1]: () => <Text style={{ fontSize: 14, fontWeight: 'bold' }}>H1</Text>,
-            [actions.heading2]: () => <Text style={{ fontSize: 14, fontWeight: 'bold' }}>H2</Text>,
-            [actions.heading3]: () => <Text style={{ fontSize: 14, fontWeight: 'bold' }}>H3</Text>,
-          }}
-          iconTint={theme.colors.text}
-          selectedIconTint={theme.colors.accent}
-          style={{
-            backgroundColor: theme.colors.card,
-            borderRadius: theme.radius.md,
-            borderWidth: 1,
-            borderColor: theme.colors.border,
-            paddingVertical: 2,
-          }}
-        />
+          {/* Editor */}
+          <View style={styles.section}>
+            <View style={styles.editorContainer} pointerEvents={navigating ? 'none' : 'auto'}>
+              {isFocused && !navigating && (
+                <RichEditor
+                  ref={editorRef}
+                  initialHeight={220}
+                  initialContentHTML={content || '<p><br></p>'}
+                  placeholder="Write something..."
+                  editorStyle={{
+                    backgroundColor: '#FFFFFF',
+                    color: '#333',
+                    contentCSSText: `
+                      font-family: 'Poppins-Regular';
+                      line-height: 22px;
+                      padding: 12px;
+                      img { max-width: 100%; height: auto; display: block; }
+                      .img-default { width: 60%; margin: 8px auto; }
+                    `,
+                    placeholderColor: '#999',
+                  }}
+                  {...(richWebViewProps as any)}
+                  onChange={(html: string) => {
+                    setContent(html);
+                    if (!programmaticSetRef.current) setDirty(true);
+                  }}
+                />
+              )}
+            </View>
+          </View>
 
-        {/* Editor */}
-        <View style={{
-          borderWidth: 1, borderColor: theme.colors.border, borderRadius: theme.radius.md,
-          overflow: 'hidden', backgroundColor: theme.colors.card,
-        }} pointerEvents={navigating ? 'none' : 'auto'}>
-          {isFocused && !navigating && (
-            <RichEditor
-              ref={editorRef}
-              initialHeight={220}
-              initialContentHTML={content || '<p><br></p>'}
-              placeholder="Write something..."
-              editorStyle={{
-                backgroundColor: theme.colors.card,
-                color: theme.colors.text,
-                contentCSSText: `
-                  font-family: ${theme.fonts.regular};
-                  line-height: 22px;
-                  padding: 12px;
-                  img { max-width: 100%; height: auto; display: block; }
-                  .img-default { width: 60%; margin: 8px auto; }
-                `,
-                placeholderColor: theme.colors.mutedText,
-              }}
-              {...(richWebViewProps as any)}
-              onChange={(html: string) => {
-                setContent(html);
-                if (!programmaticSetRef.current) setDirty(true);
-              }}
-            />
+          {/* Image Grid */}
+          {gridItems.length > 0 && (
+            <View style={styles.section}>
+              <Text style={styles.label}>Attachments</Text>
+              <ImageGrid
+                items={gridItems}
+                onLongPress={(id) => {
+                  if (!isEditing) {
+                    const idx = -id - 1;
+                    const rel = draftImages[idx];
+                    setConfirmRemoveDraftImg(rel);
+                  }
+                }}
+              />
+            </View>
           )}
-        </View>
 
-        {/* (可选) 你的外部图片预览 */}
-        {gridItems.length > 0 && (
-          <ImageGrid
-            items={gridItems}
-            onLongPress={(id) => {
-              if (!isEditing) {
-                const idx = -id - 1;
-                const rel = draftImages[idx];
-                setConfirmRemoveDraftImg(rel);
-              }
-            }}
-          />
-        )}
-
-        <View style={{ flexDirection: 'row', gap: theme.spacing(3) }}>
-          <CustomButton label="Save" onPress={onSave} loading={saving} />
-          <CustomButton variant="outline" label="Cancel" onPress={onCancel} />
-        </View>
-      </ScrollView>
+          {/* Action Buttons */}
+          <View style={styles.actionButtons}>
+            <CustomButton 
+              label="Save" 
+              onPress={onSave} 
+              loading={saving}
+              style={styles.saveButton}
+            />
+            <CustomButton 
+              variant="outline" 
+              label="Cancel" 
+              onPress={onCancel}
+              style={styles.cancelButton}
+            />
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
 
       {/* Leave keep draft */}
       <ConfirmDialog
@@ -512,6 +530,136 @@ export default function EditNoteScreen({ route, navigation }: any) {
           setConfirmRemoveDraftImg(null);
         }}
       />
-    </KeyboardAvoidingView>
+    </View>
   );
 }
+
+const { width } = Dimensions.get('window');
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#FFFFFF',
+  },
+  content: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 40, 
+  },
+  section: {
+    marginBottom: 20,
+  },
+  sectionTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 5,
+    fontFamily: 'Poppins-Bold',
+  },
+  label: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    fontFamily: 'Poppins-Bold',
+  },
+  inputContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    paddingHorizontal: 15,
+    paddingVertical: 12,
+  },
+  titleInput: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: 'Poppins-Regular',
+  },
+  errorText: {
+    color: '#DC3545',
+    fontSize: 14,
+    marginTop: 5,
+    fontFamily: 'Poppins-Regular',
+  },
+  pickerContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    overflow: 'hidden',
+  },
+  picker: {
+    color: '#333',
+  },
+  addFolderContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    marginTop: 10,
+  },
+  addFolderTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 10,
+    fontFamily: 'Poppins-Bold',
+  },
+  folderInput: {
+    fontSize: 16,
+    color: '#333',
+    fontFamily: 'Poppins-Regular',
+  },
+  addFolderButtons: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  addFolderButton: {
+    flex: 1,
+  },
+  toolbarContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    overflow: 'hidden',
+  },
+  toolbar: {
+    backgroundColor: '#F8F9FA',
+    borderWidth: 0,
+    paddingVertical: 8,
+  },
+  toolbarIcon: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: '#455B96',
+  },
+  editorContainer: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    overflow: 'hidden',
+    minHeight: 220,
+  },
+  actionButtons: {
+    flexDirection: 'row',
+    gap: 15,
+    marginTop: 20,
+    marginBottom: 20, // Ensure space at button bottom
+  },
+  saveButton: {
+    flex: 1,
+    backgroundColor: '#455B96',
+    minHeight: 48, // Ensure button has minimum height
+  },
+  cancelButton: {
+    flex: 1,
+    minHeight: 48, // Ensure button has minimum height
+  },
+});
