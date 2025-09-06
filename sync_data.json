@@ -1,0 +1,390 @@
+{
+  "export_time": "2025-09-06T14:32:50.811177",
+  "database_stats": {
+    "total_notes": 19,
+    "total_users": 9,
+    "pending_sync": 5,
+    "dirty_notes": 1
+  },
+  "users": [
+    {
+      "id": 1,
+      "username": "guest",
+      "email": null,
+      "password": null
+    },
+    {
+      "id": 2,
+      "username": "alice",
+      "email": null,
+      "password": null
+    },
+    {
+      "id": 3,
+      "username": "testuser3",
+      "email": "test3@example.com",
+      "password": "123456"
+    },
+    {
+      "id": 4,
+      "username": "testuser4",
+      "email": "test4@example.com",
+      "password": "123456"
+    },
+    {
+      "id": 5,
+      "username": "test7",
+      "email": "test7@gmail.com",
+      "password": "123456"
+    },
+    {
+      "id": 6,
+      "username": "test8",
+      "email": "test8@example.com",
+      "password": "123456"
+    },
+    {
+      "id": 7,
+      "username": "test9",
+      "email": "test9@gmail.com",
+      "password": "123456"
+    },
+    {
+      "id": 8,
+      "username": "test10",
+      "email": "test10@gmail.com",
+      "password": "123456"
+    },
+    {
+      "id": 9,
+      "username": "test11",
+      "email": "test11@gmail.com",
+      "password": "123456"
+    }
+  ],
+  "notes": [
+    {
+      "id": 39,
+      "user_id": 8,
+      "title": "5555",
+      "content": "<p><img src=\"file:///data/user/0/com.mynotev2/files/attachments/38/1757138391811_720058.webp\" class=\"img-default\"></p><p>123</p>",
+      "folder_id": null,
+      "is_favorite": 1,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T06:30:10.573Z",
+      "version": 4,
+      "remote_id": "39",
+      "dirty": 0,
+      "username": "test10"
+    },
+    {
+      "id": 38,
+      "user_id": 8,
+      "title": "123",
+      "content": "<p>123</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T05:57:35.309Z",
+      "version": 2,
+      "remote_id": "38",
+      "dirty": 0,
+      "username": "test10"
+    },
+    {
+      "id": 37,
+      "user_id": 8,
+      "title": "testing123",
+      "content": "<p>testing123</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T05:57:12.640Z",
+      "version": 2,
+      "remote_id": "37",
+      "dirty": 0,
+      "username": "test10"
+    },
+    {
+      "id": 35,
+      "user_id": 8,
+      "title": "[cloud] same-second",
+      "content": "<p>22222474747110011</p>",
+      "folder_id": null,
+      "is_favorite": 1,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T05:32:59Z",
+      "version": 8,
+      "remote_id": "35",
+      "dirty": 0,
+      "username": "test10"
+    },
+    {
+      "id": 36,
+      "user_id": 9,
+      "title": "123123",
+      "content": "<p>123123</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T05:28:15.864Z",
+      "version": 2,
+      "remote_id": "36",
+      "dirty": 0,
+      "username": "test11"
+    },
+    {
+      "id": 33,
+      "user_id": 8,
+      "title": "11",
+      "content": "<p>1</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T04:47:57.120Z",
+      "version": 2,
+      "remote_id": "33",
+      "dirty": 0,
+      "username": "test10"
+    },
+    {
+      "id": 1,
+      "user_id": 1,
+      "title": "[cloud] changed +5m",
+      "content": "<p>Testing</p>",
+      "folder_id": null,
+      "is_favorite": 1,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T03:38:23Z",
+      "version": 4,
+      "remote_id": "1",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 30,
+      "user_id": 1,
+      "title": "test",
+      "content": "test content",
+      "folder_id": null,
+      "is_favorite": 1,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T03:35:29.509Z",
+      "version": 2,
+      "remote_id": "30",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 32,
+      "user_id": 1,
+      "title": "offline",
+      "content": "<p>offline</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T03:35:03.529Z",
+      "version": 2,
+      "remote_id": "32",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 27,
+      "user_id": 1,
+      "title": "delee",
+      "content": "<p>delele</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T03:10:00.885Z",
+      "version": 2,
+      "remote_id": "27",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 25,
+      "user_id": 1,
+      "title": "delete",
+      "content": "<p>delete</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T03:02:13.117Z",
+      "version": 2,
+      "remote_id": "25",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 24,
+      "user_id": 1,
+      "title": "Delete",
+      "content": "<p>delete</p><p><br></p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:55:23.146Z",
+      "version": 2,
+      "remote_id": "24",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 22,
+      "user_id": 1,
+      "title": "delete",
+      "content": "<p>delete</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:51:36.402Z",
+      "version": 2,
+      "remote_id": "22",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 18,
+      "user_id": 1,
+      "title": "Test Note for User 1 - 1",
+      "content": "Content 1",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:42:00.144575Z",
+      "version": 1,
+      "remote_id": "18",
+      "dirty": 1,
+      "username": "guest"
+    },
+    {
+      "id": 19,
+      "user_id": 1,
+      "title": "Test Note for User 1 - 2",
+      "content": "Content 2",
+      "folder_id": null,
+      "is_favorite": 1,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:42:00.144575Z",
+      "version": 1,
+      "remote_id": "19",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 17,
+      "user_id": 1,
+      "title": "testdelete",
+      "content": "<p>delete</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:39:06.469Z",
+      "version": 2,
+      "remote_id": "17",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 16,
+      "user_id": 1,
+      "title": "dirty1",
+      "content": "<p>dirty2</p>",
+      "folder_id": 1,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:30:16.878Z",
+      "version": 2,
+      "remote_id": "16",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 14,
+      "user_id": 1,
+      "title": "dirty",
+      "content": "<p>dirty</p>",
+      "folder_id": 1,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:28:02.636Z",
+      "version": 2,
+      "remote_id": "14",
+      "dirty": 0,
+      "username": "guest"
+    },
+    {
+      "id": 13,
+      "user_id": 1,
+      "title": "rest",
+      "content": "<p>rest</p>",
+      "folder_id": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "updated_at": "2025-09-06T02:22:28.299Z",
+      "version": 2,
+      "remote_id": "13",
+      "dirty": 0,
+      "username": "guest"
+    }
+  ],
+  "sync_queue": [
+    {
+      "id": 6,
+      "user_id": 1,
+      "action": "DELETE",
+      "note_local_id": 26,
+      "remote_id": "test_fixed_remote_456",
+      "try_count": 0,
+      "last_error": null,
+      "created_at": "2025-09-06T03:08:39.345338Z",
+      "username": "guest"
+    },
+    {
+      "id": 4,
+      "user_id": 1,
+      "action": "DELETE",
+      "note_local_id": 23,
+      "remote_id": "test_remote_123",
+      "try_count": 0,
+      "last_error": null,
+      "created_at": "2025-09-06T02:54:52.130823Z",
+      "username": "guest"
+    },
+    {
+      "id": 1,
+      "user_id": 1,
+      "action": "DELETE",
+      "note_local_id": "test_local_1",
+      "remote_id": "remote_1",
+      "try_count": 0,
+      "last_error": null,
+      "created_at": "2025-09-06T02:35:39.952046Z",
+      "username": "guest"
+    },
+    {
+      "id": 2,
+      "user_id": 1,
+      "action": "DELETE",
+      "note_local_id": "test_local_2",
+      "remote_id": "remote_2",
+      "try_count": 1,
+      "last_error": "Network timeout",
+      "created_at": "2025-09-06T02:35:39.952046Z",
+      "username": "guest"
+    },
+    {
+      "id": 3,
+      "user_id": 1,
+      "action": "DELETE",
+      "note_local_id": "test_local_3",
+      "remote_id": "remote_3",
+      "try_count": 0,
+      "last_error": null,
+      "created_at": "2025-09-06T02:35:39.952046Z",
+      "username": "guest"
+    }
+  ]
+}

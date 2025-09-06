@@ -97,7 +97,7 @@ def list_notes():
                      FROM notes WHERE user_id=? ORDER BY updated_at ASC LIMIT ?""", (uid, limit))
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
-    return jsonify(rows)
+    return jsonify({ "items": rows, "server_now": now_iso() })
 
 @app.post("/api/users/register")
 def register_user():

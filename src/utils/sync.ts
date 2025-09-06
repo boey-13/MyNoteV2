@@ -69,7 +69,12 @@ async function pushDirty(uid: number): Promise<number> {
 async function pull(uid: number): Promise<number> {
   const since = await AsyncStorage.getItem(LAST_KEY(uid));
   const qs = since ? `?updated_after=${encodeURIComponent(since)}` : '';
-  const rows = await getJson<any[]>(`/notes${qs}`);
+  const data = await getJson<any>(`/notes${qs}`);
+  
+  // Support both old array format and new object format
+  const rows = Array.isArray(data) ? data : (data.items ?? []);
+  const serverNow = Array.isArray(data) ? null : data.server_now ?? null;
+  
   const db = await getDB();
   let pulledCount = 0;
 
@@ -113,12 +118,12 @@ async function pull(uid: number): Promise<number> {
     });
   });
 
-  // Use max(updated_at) as bookmark to avoid missing same-second data
+  // Use server_now if available, otherwise use max(updated_at) as bookmark to avoid missing same-second data
   const maxUpdated = rows.reduce(
-    (m, r) => (r.updated_at && r.updated_at > m ? r.updated_at : m),
+    (m: string, r: any) => (r.updated_at && r.updated_at > m ? r.updated_at : m),
     since || '1970-01-01T00:00:00Z'
   );
-  await AsyncStorage.setItem(LAST_KEY(uid), maxUpdated || nowISO());
+  await AsyncStorage.setItem(LAST_KEY(uid), serverNow ?? maxUpdated ?? nowISO());
   
   return pulledCount;
 }
