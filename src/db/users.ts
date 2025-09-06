@@ -1,16 +1,21 @@
 // db/users.ts
 import { getDB, nowISO } from './sqlite';
+import { hashPassword, comparePassword } from '../utils/crypto';
 
 export type User = { id: number; username: string; email: string; password: string; avatar?: string; created_at: string };
 
-// For local demo only: plain text storage (for educational purposes). Production should use "salted hash"!
+// Create user with encrypted password
 export async function createUser(username: string, email: string, password: string): Promise<User> {
   const db = await getDB();
+  
+  // Hash the password before storing
+  const hashedPassword = await hashPassword(password);
+  
   return new Promise((resolve, reject) => {
     db.transaction(tx => {
       tx.executeSql(
         `INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, ?)`,
-        [username, email, password, nowISO()],
+        [username, email, hashedPassword, nowISO()],
         (_, rs) => {
           tx.executeSql(`SELECT id, username, email, password, created_at FROM users WHERE id = ?`, [rs.insertId],
             (_, r2) => resolve(r2.rows.item(0)),
@@ -26,11 +31,9 @@ export async function createUser(username: string, email: string, password: stri
           // Check for specific SQLite error codes
           if (e.message && e.message.includes('UNIQUE constraint failed')) {
             if (e.message.includes('email')) {
-              reject(new Error('Email already exists'));
-            } else if (e.message.includes('username')) {
-              reject(new Error('Username already exists'));
+              reject(new Error('EMAIL_EXISTS: Email already exists'));
             } else {
-              reject(new Error('User with this information already exists'));
+              reject(new Error('USER_EXISTS: User with this information already exists'));
             }
           } else {
             reject(new Error(`Failed to create user: ${e.message || 'Unknown database error'}`));
@@ -115,7 +118,16 @@ export async function createUserWithId(id: number, username: string, email: stri
         },
         (_, e) => { 
           console.error('Error creating user with ID:', e);
-          reject(new Error(`Failed to create user: ${e.message || 'Unknown database error'}`));
+          // Check for specific SQLite error codes
+          if (e.message && e.message.includes('UNIQUE constraint failed')) {
+            if (e.message.includes('email')) {
+              reject(new Error('EMAIL_EXISTS: Email already exists'));
+            } else {
+              reject(new Error('USER_EXISTS: User with this information already exists'));
+            }
+          } else {
+            reject(new Error(`Failed to create user: ${e.message || 'Unknown database error'}`));
+          }
           return false; 
         }
       );
@@ -177,4 +189,58 @@ export async function getOrCreateGuest(): Promise<User> {
   const existing = await findUserByUsername('guest');
   if (existing) return existing;
   return createUser('guest', 'guest@example.com', '');
+}
+
+/**
+ * Verify user password
+ * @param email - User email
+ * @param password - Plain text password
+ * @returns Promise<User | null> - User if password is correct, null otherwise
+ */
+export async function verifyUserPassword(email: string, password: string): Promise<User | null> {
+  try {
+    const user = await findUserByEmail(email);
+    if (!user) {
+      return null;
+    }
+    
+    const isValid = await comparePassword(password, user.password);
+    return isValid ? user : null;
+  } catch (error) {
+    console.error('Password verification error:', error);
+    return null;
+  }
+}
+
+/**
+ * Update user password
+ * @param userId - User ID
+ * @param newPassword - New plain text password
+ * @returns Promise<boolean> - True if successful
+ */
+export async function updateUserPassword(userId: number, newPassword: string): Promise<boolean> {
+  try {
+    const db = await getDB();
+    const hashedPassword = await hashPassword(newPassword);
+    
+    return new Promise((resolve, reject) => {
+      db.transaction(tx => {
+        tx.executeSql(
+          `UPDATE users SET password = ? WHERE id = ?`,
+          [hashedPassword, userId],
+          (_, rs) => {
+            resolve(rs.rowsAffected > 0);
+          },
+          (_, e) => {
+            console.error('Error updating password:', e);
+            reject(new Error(`Failed to update password: ${e.message || 'Unknown error'}`));
+            return false;
+          }
+        );
+      });
+    });
+  } catch (error) {
+    console.error('Password update error:', error);
+    throw new Error('Failed to update password');
+  }
 }

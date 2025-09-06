@@ -23,8 +23,8 @@ def init_db():
     c.execute("""
       CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE,
-        email TEXT,
+        username TEXT,
+        email TEXT UNIQUE,
         password TEXT
       )
     """)
@@ -161,15 +161,27 @@ def register_user():
     conn = db()
     c = conn.cursor()
     
-    # Check if username or email already exists
-    c.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+    # Check if email already exists (only email needs to be unique)
+    c.execute("SELECT id FROM users WHERE email = ?", (email,))
     if c.fetchone():
         conn.close()
-        return jsonify({"error": {"code": "USER_EXISTS", "message": "Username or email already exists"}}), 409
+        return jsonify({"error": {"code": "EMAIL_EXISTS", "message": "Email already exists"}}), 409
+    
+    # Hash the password before storing
+    import hashlib
+    import secrets
+    
+    def hash_password(password):
+        salt = secrets.token_hex(16)
+        hash_obj = hashlib.sha256()
+        hash_obj.update((password + salt).encode('utf-8'))
+        return f"{salt}:{hash_obj.hexdigest()}"
+    
+    hashed_password = hash_password(password)
     
     # Create new user
     c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", 
-              (username, email, password))
+              (username, email, hashed_password))
     user_id = c.lastrowid
     conn.commit()
     conn.close()

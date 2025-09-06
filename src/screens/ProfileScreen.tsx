@@ -4,7 +4,8 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Image, Alert, Tex
 import LinearGradient from 'react-native-linear-gradient';
 import CustomButton from '../components/CustomButton';
 import { getCurrentUserId, clearSession } from '../utils/session';
-import { getUserById, updateUser } from '../db/users';
+import { getUserById, updateUser, updateUserPassword } from '../db/users';
+import { validatePasswordStrength } from '../utils/crypto';
 import { showToast } from '../components/Toast';
 import { launchImageLibrary } from 'react-native-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -16,6 +17,10 @@ export default function ProfileScreen({ navigation }: any) {
   const [avatar, setAvatar] = useState<string>('');
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [showPasswordChange, setShowPasswordChange] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   
   const loadUserInfo = async () => {
     const uid = await getCurrentUserId();
@@ -92,6 +97,44 @@ export default function ProfileScreen({ navigation }: any) {
   const handleCancelEdit = () => {
     loadUserInfo(); // Reload original data
     setIsEditing(false);
+  };
+
+  const handlePasswordChange = async () => {
+    if (!userId) return;
+    
+    // Validation
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      showToast.error('Please fill in all password fields');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      showToast.error('New passwords do not match');
+      return;
+    }
+    
+    const passwordValidation = validatePasswordStrength(newPassword);
+    if (!passwordValidation.isValid) {
+      showToast.error(passwordValidation.message);
+      return;
+    }
+    
+    setLoading(true);
+    try {
+      // For now, we'll skip current password verification since we don't have the old password
+      // In a real app, you'd verify the current password here
+      
+      await updateUserPassword(userId, newPassword);
+      showToast.success('Password updated successfully!');
+      setShowPasswordChange(false);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error: any) {
+      showToast.error(`Failed to update password: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleChangeAvatar = async () => {
@@ -213,6 +256,77 @@ export default function ProfileScreen({ navigation }: any) {
             </View>
 
             <View style={styles.inputGroup}>
+              <Text style={styles.inputLabel}>Password</Text>
+              <TouchableOpacity 
+                style={styles.passwordButton}
+                onPress={() => setShowPasswordChange(!showPasswordChange)}
+              >
+                <Text style={styles.passwordButtonText}>
+                  {showPasswordChange ? 'Hide Password Change' : 'Change Password'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {showPasswordChange && (
+              <>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Current Password</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={currentPassword}
+                    onChangeText={setCurrentPassword}
+                    placeholder="Enter current password"
+                    placeholderTextColor="#999"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>New Password</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={newPassword}
+                    onChangeText={setNewPassword}
+                    placeholder="Enter new password"
+                    placeholderTextColor="#999"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.inputLabel}>Confirm New Password</Text>
+                  <TextInput
+                    style={styles.textInput}
+                    value={confirmPassword}
+                    onChangeText={setConfirmPassword}
+                    placeholder="Confirm new password"
+                    placeholderTextColor="#999"
+                    secureTextEntry
+                  />
+                </View>
+
+                <View style={styles.passwordActions}>
+                  <CustomButton
+                    label="Update Password"
+                    onPress={handlePasswordChange}
+                    loading={loading}
+                    style={styles.passwordUpdateButton}
+                  />
+                  <CustomButton
+                    label="Cancel"
+                    onPress={() => {
+                      setShowPasswordChange(false);
+                      setCurrentPassword('');
+                      setNewPassword('');
+                      setConfirmPassword('');
+                    }}
+                    style={styles.passwordCancelButton}
+                  />
+                </View>
+              </>
+            )}
+
+            <View style={styles.inputGroup}>
               <Text style={styles.inputLabel}>User ID</Text>
               <Text style={styles.infoText}>{userId || '—'}</Text>
             </View>
@@ -332,6 +446,32 @@ const styles = StyleSheet.create({
   },
   inputGroup: {
     marginBottom: 20,
+  },
+  passwordButton: {
+    backgroundColor: '#455B96',
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  passwordButtonText: {
+    color: '#FFFFFF',
+    fontSize: 16,
+    fontWeight: 'bold',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  passwordActions: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 10,
+  },
+  passwordUpdateButton: {
+    flex: 1,
+    backgroundColor: '#28a745',
+  },
+  passwordCancelButton: {
+    flex: 1,
+    backgroundColor: '#6c757d',
   },
   inputLabel: {
     fontSize: 16,

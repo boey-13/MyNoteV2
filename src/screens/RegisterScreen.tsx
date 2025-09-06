@@ -4,6 +4,7 @@ import LinearGradient from 'react-native-linear-gradient';
 import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
 import { createUser, findUserByEmail } from '../db/users';
+import { validatePasswordStrength } from '../utils/crypto';
 import { setCurrentUserId } from '../utils/session';
 import { postJsonNoAuth } from '../utils/api';
 
@@ -23,9 +24,10 @@ export default function RegisterScreen({ navigation }: any) {
       return;
     }
     
-    // Password validation (minimum 6 characters)
-    if (password.length < 6) {
-      showToast.error('Password must be at least 6 characters');
+    // Password strength validation
+    const passwordValidation = validatePasswordStrength(password);
+    if (!passwordValidation.isValid) {
+      showToast.error(passwordValidation.message);
       return;
     }
     
@@ -69,12 +71,32 @@ export default function RegisterScreen({ navigation }: any) {
       navigation.navigate('MainApp');
     } catch (error: any) { 
       console.error('Registration error:', error);
-      const errorMsg = error?.message || 'Unknown error';
-      if (errorMsg.includes('USER_EXISTS')) {
-        showToast.error('Username or email already exists');
-      } else {
-        showToast.error(`Register failed: ${errorMsg}`);
+      console.error('Error message:', error?.message);
+      console.error('Error type:', typeof error);
+      console.error('Error keys:', Object.keys(error || {}));
+      console.error('Error toString:', error?.toString());
+      
+      let errorMsg = 'Unknown error';
+      
+      if (error?.message) {
+        errorMsg = error.message;
+      } else if (typeof error === 'string') {
+        errorMsg = error;
+      } else if (error?.toString) {
+        errorMsg = error.toString();
       }
+      
+      // Handle specific error cases
+      if (errorMsg.includes('timeout')) {
+        errorMsg = 'Request timed out. Please check your internet connection.';
+      } else if (errorMsg.includes('409')) {
+        errorMsg = 'Email already exists. Please use a different email address.';
+      } else if (errorMsg.includes('EMAIL_EXISTS')) {
+        errorMsg = 'Email already exists. Please use a different email address.';
+      }
+      
+      // Show user-friendly error message
+      showToast.error(errorMsg);
     } finally { setBusy(false); }
   };
 

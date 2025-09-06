@@ -3,7 +3,7 @@ import { View, Text, StyleSheet, Dimensions, TextInput, Image } from 'react-nati
 import LinearGradient from 'react-native-linear-gradient';
 import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
-import { findUserByEmail } from '../db/users';
+import { verifyUserPassword } from '../db/users';
 import { setCurrentUserId } from '../utils/session';
 
 export default function LoginScreen({ navigation }: any) {
@@ -30,12 +30,12 @@ export default function LoginScreen({ navigation }: any) {
         
         setBusy(true);
         try {
-            const u = await findUserByEmail(email);
-            if (!u || u.password !== password) {
+            const user = await verifyUserPassword(email, password);
+            if (!user) {
                 showToast.error('Invalid email or password');
             } else {
-                await setCurrentUserId(u.id);
-                showToast.success(`Welcome, ${u.username}`);
+                await setCurrentUserId(user.id);
+                showToast.success(`Welcome, ${user.username}`);
                 // Clear input fields
                 setEmail('');
                 setPassword('');
