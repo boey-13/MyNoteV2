@@ -1,4 +1,6 @@
 // src/utils/api.ts
+import { getCurrentUserId } from '../utils/session';
+
 const BASE_URL =
   __DEV__
     ? "http://10.0.2.2:5000/api" // Android 模拟器
@@ -13,38 +15,45 @@ function withTimeout<T>(p: Promise<T>, ms = DEFAULT_TIMEOUT) {
   });
 }
 
+async function authHeaders() {
+  const uid = (await getCurrentUserId()) ?? 1; // 兜底 1
+  return {
+    'Content-Type': 'application/json',
+    'X-User': String(uid),
+  };
+}
+
 export async function getJson<T>(path: string) {
-  const res = await withTimeout(fetch(`${BASE_URL}${path}`, {
-    headers: {
-      "Content-Type": "application/json",
-      "X-User": "1", // 简化：先固定成 1（guest）。接入登录后改为当前用户 ID。
-    },
-  }));
+  const headers = await authHeaders();
+  const res = await withTimeout(fetch(`${BASE_URL}${path}`, { headers }));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
 export async function postJson<T>(path: string, body: any) {
+  const headers = await authHeaders();
   const res = await withTimeout(fetch(`${BASE_URL}${path}`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-User": "1",
-    },
-    body: JSON.stringify(body),
+    method: 'POST', headers, body: JSON.stringify(body),
   }));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json() as Promise<T>;
 }
 
 export async function del(path: string) {
-  const res = await withTimeout(fetch(`${BASE_URL}${path}`, {
-    method: "DELETE",
-    headers: {
-      "Content-Type": "application/json",
-      "X-User": "1",
-    },
-  }));
+  const headers = await authHeaders();
+  const res = await withTimeout(fetch(`${BASE_URL}${path}`, { method: 'DELETE', headers }));
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return true;
+}
+
+// 不需要认证的POST请求（用于注册等）
+export async function postJsonNoAuth<T>(path: string, body: any) {
+  const headers = {
+    'Content-Type': 'application/json',
+  };
+  const res = await withTimeout(fetch(`${BASE_URL}${path}`, {
+    method: 'POST', headers, body: JSON.stringify(body),
+  }));
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  return res.json() as Promise<T>;
 }

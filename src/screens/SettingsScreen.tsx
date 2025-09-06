@@ -8,6 +8,7 @@ import { showToast } from '../components/Toast';
 import { countDirtyNotes, listDirtyNotes } from '../db/notes';
 import { countDeleteQueue } from '../db/syncQueue';
 import { checkDatabaseSchema, forceCreateSyncQueue } from '../utils/checkDatabase';
+import { getCurrentUserId } from '../utils/session';
 
 export default function SettingsScreen({ navigation }: any) {
   const checkHealth = async () => {
@@ -50,7 +51,7 @@ export default function SettingsScreen({ navigation }: any) {
         variant="outline"
         onPress={async () => {
           try {
-            const uid = 1; // 先用 1；接入登录后用当前用户 ID
+            const uid = (await getCurrentUserId()) ?? 1;
             const [dirty, delq] = await Promise.all([
               countDirtyNotes(uid),
               countDeleteQueue(uid),
@@ -66,7 +67,8 @@ export default function SettingsScreen({ navigation }: any) {
         variant="ghost"
         onPress={async () => {
           try {
-            const rows = await listDirtyNotes(1, 100);
+            const uid = (await getCurrentUserId()) ?? 1;
+            const rows = await listDirtyNotes(uid, 100);
             console.log('DIRTY NOTES →', rows);
             showToast.success(`Printed ${rows.length} item(s)`);
           } catch (e: any) {

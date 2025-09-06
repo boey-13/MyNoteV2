@@ -5,6 +5,7 @@ import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
 import { createUser, findUserByEmail } from '../db/users';
 import { setCurrentUserId } from '../utils/session';
+import { postJsonNoAuth } from '../utils/api';
 
 export default function RegisterScreen({ navigation }: any) {
   const [username, setUsername] = useState('');
@@ -36,16 +37,44 @@ export default function RegisterScreen({ navigation }: any) {
     
     setBusy(true);
     try {
-      const u = await createUser(username, email, password);
-      await setCurrentUserId(u.id);
+      // 先在后端注册用户
+      const backendUser = await postJsonNoAuth('/users/register', {
+        username,
+        email,
+        password
+      }) as any;
+      
+      console.log('Backend response:', backendUser);
+      console.log('Backend user ID:', backendUser?.id);
+      
+      // 检查后端返回的数据
+      if (!backendUser || !backendUser.id) {
+        console.error('Invalid backend response:', backendUser);
+        throw new Error('Invalid response from server');
+      }
+      
+      // 先在本地创建用户（使用自动生成的ID）
+      const localUser = await createUser(username, email, password);
+      console.log('Local user created:', localUser);
+      
+      // 设置当前用户ID为本地用户ID
+      await setCurrentUserId(localUser.id);
+      console.log('Current user ID set to:', localUser.id);
+      
       showToast.success('Account created');
       // 清空输入框
       setUsername('');
       setEmail('');
       setPassword('');
       navigation.navigate('MainApp');
-    } catch (error) { 
-      showToast.error(`Register failed: ${error instanceof Error ? error.message : 'Unknown error'}`); 
+    } catch (error: any) { 
+      console.error('Registration error:', error);
+      const errorMsg = error?.message || 'Unknown error';
+      if (errorMsg.includes('USER_EXISTS')) {
+        showToast.error('Username or email already exists');
+      } else {
+        showToast.error(`Register failed: ${errorMsg}`);
+      }
     } finally { setBusy(false); }
   };
 

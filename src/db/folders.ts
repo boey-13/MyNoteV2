@@ -4,7 +4,7 @@ import { Folder } from './types';
 
 async function currentUserIdOrThrow(): Promise<number> {
   const uid = await getCurrentUserId();
-  if (!uid && uid !== 0) throw new Error('No active user session');
+  if (uid === null || uid === undefined) throw new Error('No active user session');
   return uid;
 }
 

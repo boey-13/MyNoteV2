@@ -96,6 +96,33 @@ export async function getUserById(id: number): Promise<User | null> {
   });
 }
 
+export async function createUserWithId(id: number, username: string, email: string, password: string): Promise<User> {
+  const db = await getDB();
+  return new Promise((resolve, reject) => {
+    db.transaction(tx => {
+      tx.executeSql(
+        `INSERT INTO users (id, username, email, password, created_at) VALUES (?, ?, ?, ?, ?)`,
+        [id, username, email, password, nowISO()],
+        (_, rs) => {
+          tx.executeSql(`SELECT id, username, email, password, created_at FROM users WHERE id = ?`, [id],
+            (_, r2) => resolve(r2.rows.item(0)),
+            (_, e2) => { 
+              console.error('Error fetching created user:', e2);
+              reject(new Error(`Failed to fetch created user: ${e2.message || 'Unknown error'}`)); 
+              return false; 
+            }
+          );
+        },
+        (_, e) => { 
+          console.error('Error creating user with ID:', e);
+          reject(new Error(`Failed to create user: ${e.message || 'Unknown database error'}`));
+          return false; 
+        }
+      );
+    });
+  });
+}
+
 export async function getOrCreateGuest(): Promise<User> {
   const existing = await findUserByUsername('guest');
   if (existing) return existing;

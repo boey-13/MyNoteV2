@@ -10,6 +10,7 @@ import {
 } from '@react-navigation/drawer';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
+import NetInfo from '@react-native-community/netinfo';
 import HomeScreen from '../screens/HomeScreen';
 import SearchScreen from '../screens/SearchScreen';
 import RecycleBinScreen from '../screens/RecycleBinScreen';
@@ -24,6 +25,7 @@ import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import { getCurrentUserId, clearSession } from '../utils/session';
 import { showToast } from '../components/Toast';
+import { runFullSync } from '../utils/sync';
 import { Text } from 'react-native';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
@@ -159,6 +161,22 @@ export default function RootNavigator() {
       setSignedIn(!!uid);
       setChecked(true);
     })();
+  }, []);
+
+  // 网络恢复时自动同步
+  React.useEffect(() => {
+    const sub = NetInfo.addEventListener(state => {
+      if (state.isConnected) runFullSync(false);
+    });
+    return () => sub();
+  }, []);
+
+  // 应用回到前台时自动同步
+  React.useEffect(() => {
+    const sub = AppState.addEventListener('change', s => {
+      if (s === 'active') runFullSync(false);
+    });
+    return () => sub.remove();
   }, []);
 
   // 定期检查登录状态变化（确保状态同步）

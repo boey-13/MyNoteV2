@@ -16,7 +16,7 @@ function placeholders(n: number): string {
 
 async function currentUserIdOrThrow(): Promise<number> {
   const uid = await getCurrentUserId();
-  if (!uid && uid !== 0) throw new Error('No active user session');
+  if (uid === null || uid === undefined) throw new Error('No active user session');
   return uid;
 }
 
@@ -88,6 +88,7 @@ export async function createNote(input: { title: string; content?: string; folde
 
 export async function updateNote(id: number, changes: Partial<Pick<Note,'title'|'content'|'folder_id'|'is_favorite'>>): Promise<void> {
   const uid = await currentUserIdOrThrow();
+  console.log('updateNote - User ID:', uid, 'Note ID:', id, 'Changes:', changes);
   const db = await getDB();
   const fields: string[] = [];
   const params: any[] = [];
@@ -98,9 +99,11 @@ export async function updateNote(id: number, changes: Partial<Pick<Note,'title'|
   fields.push('updated_at = ?'); params.push(nowISO());
   fields.push('version = version + 1');
   fields.push('dirty = 1');
-  params.push(uid, id);
+  params.push(id, uid);  // 修复参数顺序：id在前，user_id在后
   const sql = `UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND user_id = ?;`;
-  await db.executeSql(sql, params);
+  console.log('updateNote - SQL:', sql, 'Params:', params);
+  const result = await db.executeSql(sql, params);
+  console.log('updateNote - Result:', result);
 }
 
 export async function softDeleteNote(id: number): Promise<void> {
@@ -172,11 +175,7 @@ export async function restoreNotes(ids: number[]): Promise<void> {
 export async function deleteNotesPermanent(ids: number[]): Promise<void> {
   if (!ids.length) return;
   
-  // 临时修复：如果没有用户会话，使用默认用户ID=1
-  let uid = await getCurrentUserId();
-  if (!uid) {
-    uid = 1; // 使用guest用户ID
-  }
+  const uid = await currentUserIdOrThrow();
   
   const db = await getDB();
   
@@ -222,12 +221,7 @@ export async function deleteNotesPermanent(ids: number[]): Promise<void> {
 }
 
 export async function emptyRecycleBin(): Promise<void> {
-  // 临时修复：如果没有用户会话，使用默认用户ID=1
-  let uid = await getCurrentUserId();
-  if (!uid) {
-    uid = 1; // 使用guest用户ID
-  }
-  
+  const uid = await currentUserIdOrThrow();
   const db = await getDB();
   await db.executeSql('DELETE FROM notes WHERE is_deleted = 1 AND user_id = ?;', [uid]);
 }

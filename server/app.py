@@ -72,7 +72,7 @@ def init_db():
 @app.before_request
 def ensure_user():
     if request.path.startswith("/api/"):
-        if request.path == "/api/health":
+        if request.path == "/api/health" or request.path == "/api/users/register":
             return
         uid = request.headers.get("X-User")
         if not uid or not uid.isdigit():
@@ -98,6 +98,35 @@ def list_notes():
     rows = [dict(r) for r in c.fetchall()]
     conn.close()
     return jsonify(rows)
+
+@app.post("/api/users/register")
+def register_user():
+    data = request.get_json(force=True)
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    
+    if not username or not email or not password:
+        return jsonify({"error": {"code": "MISSING_FIELDS", "message": "Username, email, and password are required"}}), 400
+    
+    conn = db(); c = conn.cursor()
+    try:
+        # 检查用户名和邮箱是否已存在
+        c.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+        if c.fetchone():
+            conn.close()
+            return jsonify({"error": {"code": "USER_EXISTS", "message": "Username or email already exists"}}), 409
+        
+        # 创建新用户
+        c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (username, email, password))
+        user_id = c.lastrowid
+        conn.commit()
+        conn.close()
+        
+        return jsonify({"id": user_id, "username": username, "email": email})
+    except Exception as e:
+        conn.close()
+        return jsonify({"error": {"code": "DATABASE_ERROR", "message": str(e)}}), 500
 
 @app.post("/api/notes/upsert")
 def upsert_note():

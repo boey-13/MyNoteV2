@@ -3,8 +3,11 @@ import { getDB, nowISO } from '../db/sqlite';
 import { listQueue, removeQueueItem, bumpQueueAttempt } from '../db/syncQueue';
 import { getJson, postJson, del } from './api';
 import { showToast } from '../components/Toast';
+import { getCurrentUserId } from './session';
 
-const LAST_KEY = (uid: number) => `sync.last.${uid}`; // 先固定 uid=1，用时传 1 即可
+const LAST_KEY = (uid: number) => `sync.last.${uid}`;
+
+let SYNC_IN_FLIGHT = false;
 
 async function pushDeleteQueue(uid: number) {
   const items = await listQueue(uid, 50);
@@ -20,8 +23,9 @@ async function pushDeleteQueue(uid: number) {
   }
 }
 
-async function pushDirty(uid: number) {
+async function pushDirty(uid: number): Promise<number> {
   const db = await getDB();
+  let pushedCount = 0;
   await new Promise<void>((resolve, reject) => {
     db.readTransaction(tx => {
       tx.executeSql(
@@ -51,6 +55,7 @@ async function pushDirty(uid: number) {
                 );
               });
             });
+            pushedCount++;
           }
           resolve();
         },
@@ -58,13 +63,15 @@ async function pushDirty(uid: number) {
       );
     });
   });
+  return pushedCount;
 }
 
-async function pull(uid: number) {
+async function pull(uid: number): Promise<number> {
   const since = await AsyncStorage.getItem(LAST_KEY(uid));
   const qs = since ? `?updated_after=${encodeURIComponent(since)}` : '';
   const rows = await getJson<any[]>(`/notes${qs}`);
   const db = await getDB();
+  let pulledCount = 0;
 
   await new Promise<void>((resolve, reject) => {
     db.transaction(tx => {
@@ -83,6 +90,7 @@ async function pull(uid: number) {
                  r.is_favorite ? 1 : 0, r.is_deleted ? 1 : 0,
                  r.updated_at ?? nowISO(), r.version ?? 1, String(r.remote_id)]
               );
+              pulledCount++;
             } else {
               if (local.dirty) return; // 本地有改动，等上行
               if ((r.updated_at || '') > (local.updated_at || '')) {
@@ -92,6 +100,7 @@ async function pull(uid: number) {
                    r.is_favorite ? 1 : 0, r.is_deleted ? 1 : 0,
                    r.updated_at ?? nowISO(), r.version ?? local.version, local.id]
                 );
+                pulledCount++;
               }
             }
           }
@@ -104,18 +113,60 @@ async function pull(uid: number) {
     });
   });
 
-  await AsyncStorage.setItem(LAST_KEY(uid), nowISO());
+  // 使用 max(updated_at) 做书签，避免同秒漏拉
+  const maxUpdated = rows.reduce(
+    (m, r) => (r.updated_at && r.updated_at > m ? r.updated_at : m),
+    since || '1970-01-01T00:00:00Z'
+  );
+  await AsyncStorage.setItem(LAST_KEY(uid), maxUpdated || nowISO());
+  
+  return pulledCount;
 }
 
-export async function runFullSync(showToastUi = true) {
-  const uid = 1; // 先固定；以后接入登录改为当前用户 ID
-  try {
-    if (showToastUi) showToast.success("Sync started");
-    await pushDeleteQueue(uid);
-    await pushDirty(uid);
-    await pull(uid);
-    if (showToastUi) showToast.success("Sync completed");
-  } catch (e: any) {
-    showToast.error(`Sync failed: ${String(e?.message || e)}`);
+export async function runFullSync(showToastUi = true): Promise<{pushed: number; deleted: number; pulled: number}> {
+  if (SYNC_IN_FLIGHT) { 
+    if (showToastUi) showToast.error('Sync is already running'); 
+    return { pushed:0, deleted:0, pulled:0 }; 
   }
+  SYNC_IN_FLIGHT = true;
+  const uid = (await getCurrentUserId()) ?? 1;
+
+  const result = { pushed: 0, deleted: 0, pulled: 0 };
+  try {
+    if (showToastUi) showToast.success('Sync started');
+
+    // 删除队列
+    const delItems = await listQueue(uid, 999);
+    await pushDeleteQueue(uid);
+    result.deleted = delItems.length;
+
+    // 脏数据
+    const pushed = await pushDirty(uid);
+    result.pushed = pushed;
+
+    // 下行
+    const pulled = await pull(uid);
+    result.pulled = pulled;
+
+    if (showToastUi) showToast.success(`Synced • +${result.pulled} / ↑${result.pushed} / ✖︎${result.deleted}`);
+  } catch (e: any) {
+    const errorMessage = String(e?.message || e);
+    let userFriendlyMessage = "Sync failed";
+    
+    // 提供更友好的错误提示
+    if (errorMessage.includes("timeout") || errorMessage.includes("Network")) {
+      userFriendlyMessage = "Sync failed: No internet connection. Please check your network and try again.";
+    } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("401")) {
+      userFriendlyMessage = "Sync failed: Authentication error. Please restart the app.";
+    } else if (errorMessage.includes("500") || errorMessage.includes("Internal Server Error")) {
+      userFriendlyMessage = "Sync failed: Server error. Please try again later.";
+    } else {
+      userFriendlyMessage = `Sync failed: ${errorMessage}`;
+    }
+    
+    if (showToastUi) showToast.error(userFriendlyMessage);
+  } finally {
+    SYNC_IN_FLIGHT = false;
+  }
+  return result;
 }
