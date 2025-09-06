@@ -7,7 +7,7 @@ DB_PATH = os.path.join(os.path.dirname(__file__), "mynote_sync.db")
 
 app = Flask(__name__)
 CORS(app)
-socketio = SocketIO(app, cors_allowed_origins="*")  # ← 新增
+socketio = SocketIO(app, cors_allowed_origins="*")  # ← Added
 
 def now_iso():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -57,11 +57,11 @@ def init_db():
       )
     """)
     
-    # 创建索引
+    # Create indexes
     c.execute("CREATE INDEX IF NOT EXISTS idx_notes_dirty ON notes(dirty)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_syncq_user ON sync_queue(user_id, created_at)")
     
-    # 预置 guest 用户 id=1
+    # Pre-create guest user id=1
     c.execute("INSERT OR IGNORE INTO users(id, username) VALUES (1, 'guest')")
     conn.commit()
     conn.close()
@@ -122,13 +122,13 @@ def upsert_note():
                 c.execute("SELECT version, updated_at FROM notes WHERE id=?", (remote_id,))
                 rr = c.fetchone()
                 conn.close()
-                # ← 推送：该用户的设备收到"更新了"
+                # ← Push: user's devices receive "updated"
                 socketio.emit('note_updated', {'id': int(remote_id)}, to=f"user:{uid}")
                 return jsonify({"id": remote_id, "version": rr["version"], "updated_at": rr["updated_at"]})
             else:
                 conn.close()
                 return jsonify({"id": remote_id, "version": row["version"], "updated_at": row["updated_at"]})
-        # 如果该 id 不存在当前用户名下，则 fallthrough 当新建
+        # If this id doesn't exist under current username, fallthrough to create new
 
     c.execute("""INSERT INTO notes (user_id,title,content,folder_id,is_favorite,is_deleted,updated_at,version)
                  VALUES (?,?,?,?,?,?,?,?)""",
@@ -136,7 +136,7 @@ def upsert_note():
     new_id = c.lastrowid
     conn.commit()
     conn.close()
-    socketio.emit('note_updated', {'id': int(new_id)}, to=f"user:{uid}")  # ← 新建也推送
+    socketio.emit('note_updated', {'id': int(new_id)}, to=f"user:{uid}")  # ← Also push for new notes
     return jsonify({"id": new_id, "version": version, "updated_at": updated_at})
 
 @app.delete("/api/notes/<int:rid>")
@@ -145,7 +145,7 @@ def delete_note(rid: int):
     conn = db(); c = conn.cursor()
     c.execute("DELETE FROM notes WHERE id=? AND user_id=?", (rid, uid))
     conn.commit(); conn.close()
-    socketio.emit('note_deleted', {'id': int(rid)}, to=f"user:{uid}")  # ← 删除推送
+    socketio.emit('note_deleted', {'id': int(rid)}, to=f"user:{uid}")  # ← Delete push
     return jsonify({"ok": True}), 200
 
 @app.post("/api/users/register")
@@ -188,15 +188,15 @@ def register_user():
     
     return jsonify({"id": user_id, "username": username, "email": email})
 
-# Socket.IO 连接：按用户进房间
+# Socket.IO connection: join room by user
 @socketio.on('connect')
 def on_connect():
     uid = request.args.get('user')
     if not uid or not uid.isdigit():
-        return False  # 拒绝连接
+        return False  # Reject connection
     join_room(f"user:{uid}")
     emit('hello', {'ok': True, 'server_time': now_iso()})
 
 if __name__ == "__main__":
     init_db()
-    socketio.run(app, host="0.0.0.0", port=5000, debug=True)  # ← 用 socketio.run
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)  # ← Use socketio.run

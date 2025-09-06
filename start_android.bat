@@ -5,7 +5,7 @@ echo ========================================
 echo.
 
 echo [1/3] Starting Flask Server...
-start "MyNoteV2 Server" cmd /k "cd /d %~dp0server && call venv\Scripts\activate.bat && python app.py"
+start "MyNoteV2 Server" cmd /k "cd /d %~dp0server && call ..\.venv\Scripts\activate.bat && python app.py"
 
 echo.
 echo [2/3] Setting up Android port forwarding...

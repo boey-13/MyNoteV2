@@ -312,7 +312,7 @@ export async function searchNotes(query: string, opts: SearchOptions = {}): Prom
 
 // db/notes.ts —— New: Count / List dirty notes
 
-/** 统计待上传数量（dirty=1） */
+/** Count pending uploads (dirty=1) */
 export async function countDirtyNotes(userId: number): Promise<number> {
   const db = await getDB();
   return new Promise<number>((resolve, reject) => {
@@ -327,7 +327,7 @@ export async function countDirtyNotes(userId: number): Promise<number> {
   });
 }
 
-/** 列出待上传的笔记（ID/标题/时间），默认最多 50 条，按更新时间升序 */
+/** List pending upload notes (ID/title/time), max 50 by default, ordered by update time ascending */
 export async function listDirtyNotes(
   userId: number,
   limit = 50

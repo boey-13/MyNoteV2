@@ -23,6 +23,8 @@ import ImageGrid from '../components/ImageGrid';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
+import WeatherWidget from '../components/WeatherWidget';
+import { WeatherData } from '../utils/weatherApi';
 
 type RouteParams = { noteId?: number };
 type FolderOpt = { label: string; value: number | 'NULL' | 'ADD_FOLDER' };
@@ -53,6 +55,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [navigating, setNavigating] = useState(false);
+  
+  // weather state
+  const [weatherData, setWeatherData] = useState<WeatherData | null>(null);
+  const [showWeather, setShowWeather] = useState(false);
+  const [weatherCity, setWeatherCity] = useState('London');
 
   // guards
   const bypassGuardRef = useRef(false);
@@ -208,6 +215,44 @@ export default function EditNoteScreen({ route, navigation }: any) {
     setTitleErr(undefined);
     return true;
   }
+
+  // Weather functions
+  const handleWeatherData = (weather: WeatherData) => {
+    setWeatherData(weather);
+  };
+
+  const handleCityChange = (city: string) => {
+    setWeatherCity(city);
+  };
+
+  // Force update editor content immediately
+  const updateEditorContent = (newContent: string) => {
+    setContent(newContent);
+    setDirty(true);
+    
+    if (editorRef.current) {
+      programmaticSetRef.current = true;
+      editorRef.current.setContentHTML(newContent);
+      setTimeout(() => {
+        programmaticSetRef.current = false;
+      }, 100);
+    }
+  };
+
+  const insertWeatherToNote = () => {
+    if (!weatherData) return;
+    
+    const weatherText = `\n\n🌤️ Weather Update (${new Date().toLocaleString()}):\n` +
+      `📍 ${weatherData.city}, ${weatherData.country}\n` +
+      `🌡️ ${weatherData.temperature}°C\n` +
+      `☁️ ${weatherData.description}\n` +
+      `💧 Humidity: ${weatherData.humidity}%\n` +
+      `💨 Wind: ${weatherData.windSpeed} m/s\n\n`;
+    
+    const newContent = content + weatherText;
+    updateEditorContent(newContent);
+    showToast.success('Weather added to note!');
+  };
 
   // autosave draft (title/content/attachments)
   useEffect(() => {
@@ -414,6 +459,44 @@ export default function EditNoteScreen({ route, navigation }: any) {
             </View>
           </View>
 
+          {/* Weather Widget */}
+          <View style={styles.section}>
+            <View style={styles.weatherSection}>
+              <View style={styles.weatherHeader}>
+                <Text style={styles.label}>Weather</Text>
+                <TouchableOpacity
+                  onPress={() => setShowWeather(!showWeather)}
+                  style={styles.weatherToggle}
+                >
+                  <Text style={styles.weatherToggleText}>
+                    {showWeather ? 'Hide' : 'Show'} Weather
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              
+              {showWeather && (
+                <View style={styles.weatherContainer}>
+                  <WeatherWidget
+                    city={weatherCity}
+                    onWeatherData={handleWeatherData}
+                    onCityChange={handleCityChange}
+                    style={styles.weatherWidget}
+                  />
+                  {weatherData && (
+                    <TouchableOpacity
+                      onPress={insertWeatherToNote}
+                      style={styles.addWeatherButton}
+                    >
+                      <Text style={styles.addWeatherButtonText}>
+                        📝 Add Weather to Note
+                      </Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              )}
+            </View>
+          </View>
+
           {/* Editor */}
           <View style={styles.section}>
             <View style={styles.editorContainer} pointerEvents={navigating ? 'none' : 'auto'}>
@@ -439,6 +522,16 @@ export default function EditNoteScreen({ route, navigation }: any) {
                   onChange={(html: string) => {
                     setContent(html);
                     if (!programmaticSetRef.current) setDirty(true);
+                  }}
+                  onLoadEnd={() => {
+                    // Force update content when editor loads
+                    if (editorRef.current && content) {
+                      programmaticSetRef.current = true;
+                      editorRef.current.setContentHTML(content);
+                      setTimeout(() => {
+                        programmaticSetRef.current = false;
+                      }, 100);
+                    }
                   }}
                 />
               )}
@@ -661,5 +754,50 @@ const styles = StyleSheet.create({
   cancelButton: {
     flex: 1,
     minHeight: 48, // Ensure button has minimum height
+  },
+  // Weather styles
+  weatherSection: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    padding: 15,
+  },
+  weatherHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  weatherToggle: {
+    backgroundColor: '#455B96',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+  },
+  weatherToggleText: {
+    color: 'white',
+    fontSize: 12,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
+  },
+  weatherContainer: {
+    gap: 10,
+  },
+  weatherWidget: {
+    marginVertical: 0,
+  },
+  addWeatherButton: {
+    backgroundColor: '#28a745',
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  addWeatherButtonText: {
+    color: 'white',
+    fontSize: 14,
+    fontWeight: '600',
+    fontFamily: 'Poppins-SemiBold',
   },
 });

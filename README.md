@@ -1,97 +1,355 @@
-This is a new [**React Native**](https://reactnative.dev) project, bootstrapped using [`@react-native-community/cli`](https://github.com/react-native-community/cli).
+# 🌤️ MyNote - Advanced Note-Taking App
 
-# Getting Started
+A modern, feature-rich note-taking application built with React Native, featuring real-time synchronization, weather integration, and enterprise-grade security.
 
-> **Note**: Make sure you have completed the [Set Up Your Environment](https://reactnative.dev/docs/set-up-your-environment) guide before proceeding.
+## ✨ Features
 
-## Step 1: Start Metro
+- 📝 **Rich Text Editing** - Create and edit notes with rich formatting
+- 🌤️ **Weather Integration** - Add real-time weather data to your notes
+- 🔄 **Real-time Sync** - Synchronize notes across multiple devices
+- 🔐 **Secure Authentication** - Password encryption and secure user management
+- 📁 **Folder Organization** - Organize notes into custom folders
+- ⭐ **Favorites System** - Mark important notes as favorites
+- 🗑️ **Recycle Bin** - Soft delete with restore functionality
+- 🔍 **Advanced Search** - Search through notes with filters
+- 📱 **Cross-platform** - Works on Android and iOS
+- 🎨 **Modern UI** - Beautiful, intuitive user interface
 
-First, you will need to run **Metro**, the JavaScript build tool for React Native.
+## 🏗️ Architecture
 
-To start the Metro dev server, run the following command from the root of your React Native project:
+### Three API Servers
+1. **🌐 Web-based API**: OpenWeatherMap (Weather data)
+2. **🔌 WebSocket API**: Local WebSocket server (Real-time sync)
+3. **🌐 Web-based API**: Local REST API (User management & data)
 
-```sh
-# Using npm
-npm start
+### Tech Stack
+- **Frontend**: React Native, TypeScript
+- **Backend**: Python Flask, Flask-SocketIO
+- **Database**: SQLite
+- **Authentication**: Custom password hashing
+- **APIs**: OpenWeatherMap, Custom REST/WebSocket
 
-# OR using Yarn
-yarn start
+## 🚀 Quick Start
+
+### Prerequisites
+- Node.js (v16 or higher)
+- Python 3.8+
+- Android Studio (for Android development)
+- Xcode (for iOS development, macOS only)
+- Git
+
+### 1. Clone the Repository
+```bash
+git clone <your-repository-url>
+cd MyNoteV2
 ```
 
-## Step 2: Build and run your app
+### 2. Install Dependencies
 
-With Metro running, open a new terminal window/pane from the root of your React Native project, and use one of the following commands to build and run your Android or iOS app:
+#### Frontend Dependencies
+```bash
+npm install
+```
 
-### Android
+#### Backend Dependencies
+```bash
+# Create virtual environment
+python -m venv .venv
 
-```sh
-# Using npm
+# Activate virtual environment
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+# Install Python dependencies
+pip install flask flask-socketio sqlite3
+```
+
+### 3. Verify Setup (Optional but Recommended)
+```bash
+# Check if everything is configured correctly
+python check_setup.py
+```
+
+### 4. Configure API Keys
+
+#### OpenWeatherMap API (Required for weather features)
+1. Visit [OpenWeatherMap](https://openweathermap.org/api)
+2. Sign up for a free account
+3. Get your API key
+4. Copy the example file and add your key:
+```bash
+cp src/config/apiKeys.example.ts src/config/apiKeys.ts
+# Then edit src/config/apiKeys.ts with your actual API key
+```
+
+### 5. Database Setup
+
+#### Run Database Migration (if needed)
+```bash
+python migrate_database.py
+```
+
+### 6. Start the Application
+
+#### Option A: Use Batch Scripts (Windows)
+```bash
+# Start backend server
+start_server.bat
+
+# In a new terminal, start React Native
+npm start
+```
+
+#### Option B: Manual Start
+
+**Terminal 1 - Backend Server:**
+```bash
+cd server
+python app.py
+```
+
+**Terminal 2 - React Native Metro:**
+```bash
+npm start
+```
+
+**Terminal 3 - Run on Device/Emulator:**
+```bash
+# Android
 npm run android
 
-# OR using Yarn
-yarn android
+# iOS (macOS only)
+npm run ios
 ```
+
+## 📱 Running on Device
+
+### Android
+1. Enable Developer Options and USB Debugging on your device
+2. Connect device via USB
+3. **Set up port forwarding** (required for backend connection):
+   ```bash
+   adb reverse tcp:5000 tcp:5000
+   ```
+4. Run `npm run android`
 
 ### iOS
+1. Open `ios/MyNoteV2.xcworkspace` in Xcode
+2. Select your device/simulator
+3. Click Run
 
-For iOS, remember to install CocoaPods dependencies (this only needs to be run on first clone or after updating native deps).
+## 🔧 Configuration
 
-The first time you create a new project, run the Ruby bundler to install CocoaPods itself:
+### Environment Variables
+Create a `.env` file in the root directory:
+```env
+# Backend Configuration
+FLASK_ENV=development
+FLASK_DEBUG=True
 
-```sh
-bundle install
+# Database
+DATABASE_URL=sqlite:///mynote_sync.db
+
+# API Keys
+OPENWEATHER_API_KEY=your_openweather_api_key
 ```
 
-Then, and every time you update your native dependencies, run:
+### Network Configuration
+- **Backend Server**: `http://localhost:5000`
+- **WebSocket**: `ws://localhost:5000`
+- **Android Emulator**: `http://10.0.2.2:5000`
 
-```sh
-bundle exec pod install
+## 🗂️ Project Structure
+
+```
+MyNoteV2/
+├── src/
+│   ├── components/          # Reusable UI components
+│   ├── screens/            # App screens
+│   ├── navigation/         # Navigation configuration
+│   ├── db/                # Database operations
+│   ├── utils/             # Utility functions
+│   ├── theme/             # Theme and styling
+│   └── config/            # Configuration files
+├── server/                # Backend server
+│   ├── app.py            # Flask application
+│   └── mynote_sync.db    # SQLite database
+├── android/              # Android-specific code
+├── ios/                  # iOS-specific code
+└── assets/              # Images, fonts, etc.
 ```
 
-For more information, please visit [CocoaPods Getting Started guide](https://guides.cocoapods.org/using/getting-started.html).
+## 🔐 Security Features
 
-```sh
-# Using npm
+- **Password Hashing**: SHA256 with random salt
+- **Input Validation**: Comprehensive form validation
+- **SQL Injection Protection**: Parameterized queries
+- **Secure Storage**: Encrypted local storage
+
+## 🌤️ Weather Integration
+
+The app integrates with OpenWeatherMap API to provide:
+- Current weather conditions
+- Global city support
+- Weather data insertion into notes
+- Real-time weather updates
+
+## 🔄 Real-time Features
+
+- **Live Sync**: Notes sync across devices in real-time
+- **WebSocket Connection**: Persistent connection for instant updates
+- **Conflict Resolution**: Automatic handling of concurrent edits
+
+## 🐛 Troubleshooting
+
+### Common Issues
+
+#### 1. Metro bundler issues
+```bash
+# Clear Metro cache
+npx react-native start --reset-cache
+```
+
+#### 2. Android build issues
+```bash
+# Clean and rebuild
+cd android
+./gradlew clean
+cd ..
+npm run android
+```
+
+#### 3. iOS build issues
+```bash
+# Clean and reinstall pods
+cd ios
+rm -rf Pods
+rm Podfile.lock
+pod install
+cd ..
 npm run ios
-
-# OR using Yarn
-yarn ios
 ```
 
-If everything is set up correctly, you should see your new app running in the Android Emulator, iOS Simulator, or your connected device.
+#### 4. Backend connection issues
+- Ensure backend server is running on port 5000
+- Check firewall settings
+- Verify API keys are correctly configured
 
-This is one way to run your app — you can also build it directly from Android Studio or Xcode.
+#### 5. Weather API not working
+- Verify OpenWeatherMap API key is valid
+- Check internet connection
+- Ensure API key has sufficient quota
 
-## Step 3: Modify your app
+#### 6. WebSocket Connection Issues
+If you see "WebSocket disconnected" or connection issues:
 
-Now that you have successfully run the app, let's make changes!
+**Check Server Status:**
+```bash
+# Make sure Flask server is running
+python check_setup.py
+```
 
-Open `App.tsx` in your text editor of choice and make some changes. When you save, your app will automatically update and reflect these changes — this is powered by [Fast Refresh](https://reactnative.dev/docs/fast-refresh).
+**Common Solutions:**
+1. **Port 5000 already in use:**
+   ```bash
+   # Find process using port 5000
+   netstat -ano | findstr :5000
+   # Kill the process (replace PID with actual process ID)
+   taskkill /PID <PID> /F
+   ```
 
-When you want to forcefully reload, for example to reset the state of your app, you can perform a full reload:
+2. **Firewall blocking connection:**
+   - Add Python/Flask to Windows Firewall exceptions
+   - Or temporarily disable firewall for testing
 
-- **Android**: Press the <kbd>R</kbd> key twice or select **"Reload"** from the **Dev Menu**, accessed via <kbd>Ctrl</kbd> + <kbd>M</kbd> (Windows/Linux) or <kbd>Cmd ⌘</kbd> + <kbd>M</kbd> (macOS).
-- **iOS**: Press <kbd>R</kbd> in iOS Simulator.
+3. **Android port forwarding not working:**
+   ```bash
+   # Check if device is connected
+   adb devices
+   # Reset port forwarding
+   adb reverse --remove tcp:5000
+   adb reverse tcp:5000 tcp:5000
+   ```
+   
+   **Manual Solution:** If the above doesn't work, manually run:
+   ```bash
+   adb reverse tcp:5000 tcp:5000
+   ```
 
-## Congratulations! :tada:
+4. **WebSocket not connecting on web:**
+   - Check browser console for errors
+   - Ensure server is running with WebSocket support
+   - Try refreshing the page
 
-You've successfully run and modified your React Native App. :partying_face:
+5. **Connection timeout:**
+   - Check internet connection
+   - Verify server is accessible at http://localhost:5000
+   - Restart the server
 
-### Now what?
+**Debug WebSocket Connection:**
+```bash
+# Test WebSocket connection manually
+curl -i -N -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Key: test" -H "Sec-WebSocket-Version: 13" http://localhost:5000/socket.io/
+```
 
-- If you want to add this new React Native code to an existing application, check out the [Integration guide](https://reactnative.dev/docs/integration-with-existing-apps).
-- If you're curious to learn more about React Native, check out the [docs](https://reactnative.dev/docs/getting-started).
+### Debug Mode
+Enable debug logging by setting:
+```typescript
+// In src/utils/api.ts
+const DEBUG = true;
+```
 
-# Troubleshooting
+## 📊 API Documentation
 
-If you're having issues getting the above steps to work, see the [Troubleshooting](https://reactnative.dev/docs/troubleshooting) page.
+### Local REST API Endpoints
+- `POST /api/users/register` - User registration
+- `GET /api/notes` - Get user notes
+- `POST /api/notes` - Create new note
+- `PUT /api/notes/:id` - Update note
+- `DELETE /api/notes/:id` - Delete note
 
-# Learn More
+### WebSocket Events
+- `connect` - Establish connection
+- `sync_note` - Sync note changes
+- `note_updated` - Note update notification
 
-To learn more about React Native, take a look at the following resources:
+## 🤝 Contributing
 
-- [React Native Website](https://reactnative.dev) - learn more about React Native.
-- [Getting Started](https://reactnative.dev/docs/environment-setup) - an **overview** of React Native and how setup your environment.
-- [Learn the Basics](https://reactnative.dev/docs/getting-started) - a **guided tour** of the React Native **basics**.
-- [Blog](https://reactnative.dev/blog) - read the latest official React Native **Blog** posts.
-- [`@facebook/react-native`](https://github.com/facebook/react-native) - the Open Source; GitHub **repository** for React Native.
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add some amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## 📝 Development Notes
+
+### Adding New Features
+1. Create components in `src/components/`
+2. Add screens in `src/screens/`
+3. Update navigation in `src/navigation/`
+4. Add database operations in `src/db/`
+
+### Database Migrations
+When modifying database schema:
+1. Update `server/app.py` schema
+2. Create migration script
+3. Test migration on development database
+4. Document changes in README
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- [React Native](https://reactnative.dev/) - Mobile framework
+- [OpenWeatherMap](https://openweathermap.org/) - Weather data API
+- [Flask](https://flask.palletsprojects.com/) - Python web framework
+- [SQLite](https://www.sqlite.org/) - Database engine
+
+
+---
+
+**Happy Note-Taking! 📝✨**

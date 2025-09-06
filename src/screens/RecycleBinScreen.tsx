@@ -231,7 +231,7 @@ export default function RecycleBinScreen() {
         <View style={styles.section}>
           {deleted.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🗑️</Text>
+              <Text style={styles.emptyIcon}>🗑</Text>
               <Text style={styles.emptyText}>No deleted notes</Text>
               <Text style={styles.emptySubtext}>Deleted notes will appear here</Text>
             </View>
@@ -405,6 +405,8 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 15,
+    color: '#666',
+    opacity: 0.6,
   },
   emptyText: {
     fontSize: 18,
@@ -479,7 +481,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   noteContentContainer: {
-    maxHeight: 60, // Limit height, equivalent to 3 lines of text
+    maxHeight: 60, 
     overflow: 'hidden',
     marginBottom: 8,
   },

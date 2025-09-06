@@ -99,7 +99,7 @@ export default function FavoritesScreen({ navigation }: any) {
         <View style={styles.section}>
           {favs.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>⭐</Text>
+              <Text style={styles.emptyIcon}>★</Text>
               <Text style={styles.emptyText}>No favorite notes yet</Text>
               <Text style={styles.emptySubtext}>Tap the star icon on any note to add it to favorites</Text>
             </View>
@@ -162,6 +162,8 @@ const styles = StyleSheet.create({
   emptyIcon: {
     fontSize: 48,
     marginBottom: 15,
+    color: '#666',
+    opacity: 0.6,
   },
   emptyText: {
     fontSize: 18,

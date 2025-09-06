@@ -242,42 +242,55 @@ export default function HomeScreen({ navigation }: any) {
             )}
           </View>
           <View style={styles.notesGrid}>
-            {notes.map(n => {
-              const isSelected = selectedNotes.has(n.id);
-              return (
-                <TouchableOpacity 
-                  key={n.id} 
-                  style={[
-                    styles.noteCard,
-                    isSelected && styles.selectedNoteCard,
-                    isSelectionMode && styles.selectionModeCard
-                  ]}
-                  onPress={() => handleNotePress(n.id)}
-                  onLongPress={() => handleLongPress(n.id)}
-                  delayLongPress={500}
-                >
-                  {isSelectionMode && (
-                    <View style={styles.selectionIndicator}>
-                      <Text style={styles.selectionCheckbox}>
-                        {isSelected ? '✓' : '○'}
-                      </Text>
+            {notes.length === 0 ? (
+              <View style={styles.emptyNotesContainer}>
+                <Text style={styles.emptyNotesIcon}>✏️</Text>
+                <Text style={styles.emptyNotesTitle}>No notes yet</Text>
+                <Text style={styles.emptyNotesSubtitle}>
+                  Tap the + button below to create your first note
+                </Text>
+                <Text style={styles.emptyNotesHint}>
+                  You can add weather, images, and organize notes into folders
+                </Text>
+              </View>
+            ) : (
+              notes.map(n => {
+                const isSelected = selectedNotes.has(n.id);
+                return (
+                  <TouchableOpacity 
+                    key={n.id} 
+                    style={[
+                      styles.noteCard,
+                      isSelected && styles.selectedNoteCard,
+                      isSelectionMode && styles.selectionModeCard
+                    ]}
+                    onPress={() => handleNotePress(n.id)}
+                    onLongPress={() => handleLongPress(n.id)}
+                    delayLongPress={500}
+                  >
+                    {isSelectionMode && (
+                      <View style={styles.selectionIndicator}>
+                        <Text style={styles.selectionCheckbox}>
+                          {isSelected ? '✓' : '○'}
+                        </Text>
+                      </View>
+                    )}
+                    
+                    <Text style={styles.noteTitle} numberOfLines={2}>
+                      {n.title || 'Untitled'}
+                    </Text>
+                    <View style={styles.noteContentContainer}>
+                      {renderPreview(n.content)}
                     </View>
-                  )}
-                  
-                  <Text style={styles.noteTitle} numberOfLines={2}>
-                    {n.title || 'Untitled'}
-                  </Text>
-                  <View style={styles.noteContentContainer}>
-                    {renderPreview(n.content)}
-                  </View>
-                  {n.is_favorite ? (
-                    <View style={styles.favoriteIndicator}>
-                      <Text style={styles.favoriteIcon}>★</Text>
-                    </View>
-                  ) : null}
-                </TouchableOpacity>
-              );
-            })}
+                    {n.is_favorite ? (
+                      <View style={styles.favoriteIndicator}>
+                        <Text style={styles.favoriteIcon}>★</Text>
+                      </View>
+                    ) : null}
+                  </TouchableOpacity>
+                );
+              })
+            )}
           </View>
         </View>
       </ScrollView>
@@ -506,5 +519,39 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#455B96',
     fontWeight: 'bold',
+  },
+  emptyNotesContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 60,
+    paddingHorizontal: 20,
+  },
+  emptyNotesIcon: {
+    fontSize: 48,
+    marginBottom: 16,
+    color: '#666',
+    opacity: 0.6,
+  },
+  emptyNotesTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    color: '#333',
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  emptyNotesSubtitle: {
+    fontSize: 16,
+    color: '#666',
+    marginBottom: 12,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  emptyNotesHint: {
+    fontSize: 14,
+    color: '#888',
+    textAlign: 'center',
+    lineHeight: 20,
+    fontStyle: 'italic',
   },
 });
