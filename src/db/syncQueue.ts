@@ -3,7 +3,7 @@ import { getDB, nowISO } from './sqlite';
 export async function enqueueDelete(userId: number, noteLocalId: number | null, remoteId: string) {
   console.log(`enqueueDelete called with: userId=${userId}, noteLocalId=${noteLocalId}, remoteId=${remoteId}`);
   
-  // 参数验证
+  // Parameter validation
   if (userId === undefined || userId === null) {
     throw new Error(`Invalid userId: ${userId}`);
   }
@@ -13,7 +13,7 @@ export async function enqueueDelete(userId: number, noteLocalId: number | null, 
   
   const db = await getDB();
   
-  // 使用更简单的方法：直接执行SQL，不使用事务
+  // Use simpler approach: direct SQL execution, no transaction
   try {
     const result = await db.executeSql(
       `INSERT INTO sync_queue(user_id, action, note_local_id, remote_id, created_at)

@@ -18,7 +18,7 @@ async function pushDeleteQueue(uid: number) {
       await removeQueueItem(it.id);
     } catch (e: any) {
       await bumpQueueAttempt(it.id, String(e?.message || e));
-      if (/timeout|Network/i.test(String(e))) break; // 网络问题：先停，留给下次
+      if (/timeout|Network/i.test(String(e))) break; // Network issue: stop and retry later
     }
   }
 }
@@ -82,7 +82,7 @@ async function pull(uid: number): Promise<number> {
           (_, rs) => {
             const local = rs.rows.length ? rs.rows.item(0) : null;
             if (!local) {
-              // 插入本地
+              // Insert locally
               tx.executeSql(
                 `INSERT INTO notes (title, content, folder_id, user_id, is_favorite, is_deleted, updated_at, version, remote_id, dirty)
                  VALUES (?,?,?,?,?,?,?,?,?,0)`,
@@ -92,7 +92,7 @@ async function pull(uid: number): Promise<number> {
               );
               pulledCount++;
             } else {
-              if (local.dirty) return; // 本地有改动，等上行
+              if (local.dirty) return; // Local changes exist, wait for upload
               if ((r.updated_at || '') > (local.updated_at || '')) {
                 tx.executeSql(
                   `UPDATE notes SET title=?, content=?, folder_id=?, is_favorite=?, is_deleted=?, updated_at=?, version=?, dirty=0 WHERE id=?`,
@@ -113,7 +113,7 @@ async function pull(uid: number): Promise<number> {
     });
   });
 
-  // 使用 max(updated_at) 做书签，避免同秒漏拉
+  // Use max(updated_at) as bookmark to avoid missing same-second data
   const maxUpdated = rows.reduce(
     (m, r) => (r.updated_at && r.updated_at > m ? r.updated_at : m),
     since || '1970-01-01T00:00:00Z'
@@ -135,16 +135,16 @@ export async function runFullSync(showToastUi = true): Promise<{pushed: number; 
   try {
     if (showToastUi) showToast.success('Sync started');
 
-    // 删除队列
+    // Delete queue
     const delItems = await listQueue(uid, 999);
     await pushDeleteQueue(uid);
     result.deleted = delItems.length;
 
-    // 脏数据
+    // Dirty data
     const pushed = await pushDirty(uid);
     result.pushed = pushed;
 
-    // 下行
+    // Download
     const pulled = await pull(uid);
     result.pulled = pulled;
 
@@ -153,7 +153,7 @@ export async function runFullSync(showToastUi = true): Promise<{pushed: number; 
     const errorMessage = String(e?.message || e);
     let userFriendlyMessage = "Sync failed";
     
-    // 提供更友好的错误提示
+    // Provide more user-friendly error messages
     if (errorMessage.includes("timeout") || errorMessage.includes("Network")) {
       userFriendlyMessage = "Sync failed: No internet connection. Please check your network and try again.";
     } else if (errorMessage.includes("UNAUTHORIZED") || errorMessage.includes("401")) {

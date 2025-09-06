@@ -3,7 +3,7 @@ import { getDB, nowISO } from './sqlite';
 
 export type User = { id: number; username: string; email: string; password: string; created_at: string };
 
-// 仅用于本地 demo：明文存储（课程用途）。生产请改为“加盐哈希”！
+// For local demo only: plain text storage (for educational purposes). Production should use "salted hash"!
 export async function createUser(username: string, email: string, password: string): Promise<User> {
   const db = await getDB();
   return new Promise((resolve, reject) => {

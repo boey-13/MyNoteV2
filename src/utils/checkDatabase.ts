@@ -8,7 +8,7 @@ export async function checkDatabaseSchema(): Promise<void> {
   
   console.log('🔍 检查数据库结构...');
   
-  // 1. 检查当前schema版本
+  // 1. Check current schema version
   try {
     const versionResult = await db.executeSql('SELECT value FROM app_meta WHERE key = ?', ['schema_version']);
     const currentVersion = versionResult[0].rows.length > 0 ? parseInt(versionResult[0].rows.item(0).value) : 0;
@@ -17,7 +17,7 @@ export async function checkDatabaseSchema(): Promise<void> {
     console.log('❌ 无法读取schema版本，可能数据库未初始化');
   }
   
-  // 2. 检查notes表是否有dirty列
+  // 2. Check if notes table has dirty column
   try {
     const notesResult = await db.executeSql('PRAGMA table_info(notes)');
     const columns = [];
@@ -30,14 +30,14 @@ export async function checkDatabaseSchema(): Promise<void> {
     console.log('❌ 无法检查notes表结构');
   }
   
-  // 3. 检查sync_queue表是否存在
+  // 3. Check if sync_queue table exists
   try {
     const syncQueueResult = await db.executeSql('SELECT name FROM sqlite_master WHERE type="table" AND name="sync_queue"');
     const tableExists = syncQueueResult[0].rows.length > 0;
     console.log(`✅ sync_queue表存在: ${tableExists}`);
     
     if (tableExists) {
-      // 检查sync_queue表结构
+      // Check sync_queue table structure
       const structureResult = await db.executeSql('PRAGMA table_info(sync_queue)');
       const columns = [];
       for (let i = 0; i < structureResult[0].rows.length; i++) {
@@ -57,11 +57,11 @@ export async function forceCreateSyncQueue(): Promise<void> {
   console.log('🔧 强制创建sync_queue表...');
   
   try {
-    // 删除旧表（如果存在）
+    // Drop old table (if exists)
     await db.executeSql('DROP TABLE IF EXISTS sync_queue');
     console.log('🗑️ 删除旧sync_queue表');
     
-    // 创建新表
+    // Create new table
     await db.executeSql(`
       CREATE TABLE sync_queue(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -76,11 +76,11 @@ export async function forceCreateSyncQueue(): Promise<void> {
     `);
     console.log('✅ 创建sync_queue表');
     
-    // 创建索引
+    // Create indexes
     await db.executeSql('CREATE INDEX idx_syncq_user ON sync_queue(user_id, created_at)');
     console.log('✅ 创建索引');
     
-    // 更新schema版本
+    // Update schema version
     await db.executeSql('INSERT OR REPLACE INTO app_meta (key, value) VALUES (?, ?)', ['schema_version', '7']);
     console.log('✅ 更新schema版本到7');
     

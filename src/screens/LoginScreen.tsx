@@ -36,7 +36,7 @@ export default function LoginScreen({ navigation }: any) {
             } else {
                 await setCurrentUserId(u.id);
                 showToast.success(`Welcome, ${u.username}`);
-                // 清空输入框
+                // Clear input fields
                 setEmail('');
                 setPassword('');
                 navigation.navigate('MainApp');

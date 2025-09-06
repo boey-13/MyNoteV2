@@ -28,7 +28,7 @@ export default function ProfileScreen({ navigation }: any) {
     loadUserInfo();
   }, []);
   
-  // 监听导航焦点，当页面重新获得焦点时重新加载用户信息
+  // Listen to navigation focus, reload user info when page regains focus
   useEffect(() => {
     const unsubscribe = navigation.addListener('focus', () => {
       loadUserInfo();

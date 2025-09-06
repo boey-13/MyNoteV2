@@ -119,13 +119,13 @@ function AppStack() {
   );
 }
 
-// ✅ 自定义 Drawer：把 Logout 放在最底部
+// ✅ Custom Drawer: Place Logout at the bottom
 function CustomDrawerContent(
   props: DrawerContentComponentProps & { signedIn: boolean; onSignOut: () => void }
 ) {
   const { signedIn, onSignOut, ...rest } = props as any;
   
-  // 调试信息
+  // Debug info
   console.log('CustomDrawerContent - signedIn:', signedIn);
   
   return (
@@ -140,7 +140,7 @@ function CustomDrawerContent(
               console.log('Logout pressed');
               await clearSession();
               showToast.success('Signed out');
-              onSignOut(); // 立即更新状态
+              onSignOut(); // Update state immediately
               rest.navigation.closeDrawer();
               rest.navigation.navigate('Auth');
             }}
@@ -163,7 +163,7 @@ export default function RootNavigator() {
     })();
   }, []);
 
-  // 网络恢复时自动同步
+  // Auto-sync on network recovery
   React.useEffect(() => {
     const sub = NetInfo.addEventListener(state => {
       if (state.isConnected) runFullSync(false);
@@ -171,7 +171,7 @@ export default function RootNavigator() {
     return () => sub();
   }, []);
 
-  // 应用回到前台时自动同步
+  // Auto-sync when app comes to foreground
   React.useEffect(() => {
     const sub = AppState.addEventListener('change', s => {
       if (s === 'active') runFullSync(false);
@@ -179,7 +179,7 @@ export default function RootNavigator() {
     return () => sub.remove();
   }, []);
 
-  // 定期检查登录状态变化（确保状态同步）
+  // Periodically check login state changes (ensure state sync)
   React.useEffect(() => {
     const interval = setInterval(async () => {
       const uid = await getCurrentUserId();
@@ -190,7 +190,7 @@ export default function RootNavigator() {
         }
         return prev;
       });
-    }, 1000); // 每秒检查一次
+    }, 1000); // Check every second
 
     return () => clearInterval(interval);
   }, []);
@@ -200,11 +200,11 @@ export default function RootNavigator() {
     setSignedIn(false);
   }, []);
 
-  // 调试信息
+  // Debug info
   console.log('RootNavigator - signedIn:', signedIn, 'checked:', checked);
 
   if (!checked) {
-    return null; // 简单的 splash 占位，必要可换成自定义
+    return null; // Simple splash placeholder, can be replaced with custom if needed
   }
 
   return (
@@ -221,7 +221,7 @@ export default function RootNavigator() {
           title: 'MyNote',
           headerShown: true,
           headerLeft: () => <DrawerToggleButton />,
-          drawerItemStyle: signedIn ? undefined : { display: 'none' }, // 未登录时隐藏
+          drawerItemStyle: signedIn ? undefined : { display: 'none' }, // Hide when not logged in
         }}
       />
       <Drawer.Screen
@@ -230,7 +230,7 @@ export default function RootNavigator() {
         options={{
           title: 'Sign In',
           headerShown: false,
-          drawerItemStyle: signedIn ? { display: 'none' } : undefined, // 登录后隐藏
+          drawerItemStyle: signedIn ? { display: 'none' } : undefined, // Hide after login
         }}
       />
       <Drawer.Screen name="About" component={AboutScreen} />

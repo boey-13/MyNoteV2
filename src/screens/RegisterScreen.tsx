@@ -37,7 +37,7 @@ export default function RegisterScreen({ navigation }: any) {
     
     setBusy(true);
     try {
-      // 先在后端注册用户
+      // First register user on backend
       const backendUser = await postJsonNoAuth('/users/register', {
         username,
         email,
@@ -47,22 +47,22 @@ export default function RegisterScreen({ navigation }: any) {
       console.log('Backend response:', backendUser);
       console.log('Backend user ID:', backendUser?.id);
       
-      // 检查后端返回的数据
+      // Check backend response data
       if (!backendUser || !backendUser.id) {
         console.error('Invalid backend response:', backendUser);
         throw new Error('Invalid response from server');
       }
       
-      // 先在本地创建用户（使用自动生成的ID）
+      // First create user locally (using auto-generated ID)
       const localUser = await createUser(username, email, password);
       console.log('Local user created:', localUser);
       
-      // 设置当前用户ID为本地用户ID
+      // Set current user ID to local user ID
       await setCurrentUserId(localUser.id);
       console.log('Current user ID set to:', localUser.id);
       
       showToast.success('Account created');
-      // 清空输入框
+      // Clear input fields
       setUsername('');
       setEmail('');
       setPassword('');

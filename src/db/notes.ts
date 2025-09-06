@@ -99,7 +99,7 @@ export async function updateNote(id: number, changes: Partial<Pick<Note,'title'|
   fields.push('updated_at = ?'); params.push(nowISO());
   fields.push('version = version + 1');
   fields.push('dirty = 1');
-  params.push(id, uid);  // 修复参数顺序：id在前，user_id在后
+  params.push(id, uid);  // Fix parameter order: id first, user_id second
   const sql = `UPDATE notes SET ${fields.join(', ')} WHERE id = ? AND user_id = ?;`;
   console.log('updateNote - SQL:', sql, 'Params:', params);
   const result = await db.executeSql(sql, params);
@@ -180,13 +180,13 @@ export async function deleteNotesPermanent(ids: number[]): Promise<void> {
   const db = await getDB();
   
   try {
-    // 先获取所有笔记的remote_id信息（在删除前）
+    // First get remote_id info for all notes (before deletion)
     const ph = placeholders(ids.length);
     const res = await db.executeSql(`SELECT id, remote_id FROM notes WHERE id IN (${ph}) AND user_id = ?;`, [...ids, uid]);
     
     console.log(`Found ${res[0].rows.length} notes to delete`);
     
-    // 将有remote_id的笔记加入删除队列
+    // Add notes with remote_id to delete queue
     console.log(`User ID for enqueue: ${uid} (type: ${typeof uid})`);
     for (let i = 0; i < res[0].rows.length; i++) {
       const row = res[0].rows.item(i);
@@ -204,14 +204,14 @@ export async function deleteNotesPermanent(ids: number[]): Promise<void> {
             remoteId: row.remote_id,
             error: enqueueError
           });
-          // 继续执行，不因为队列失败而停止删除
+          // Continue execution, don't stop deletion due to queue failure
         }
       } else {
         console.log(`Note ${row.id} has no remote_id, skipping queue`);
       }
     }
     
-    // 然后执行本地删除
+    // Then execute local deletion
     await db.executeSql(`DELETE FROM notes WHERE id IN (${ph}) AND user_id = ?;`, [...ids, uid]);
     console.log(`Successfully deleted ${ids.length} notes locally`);
   } catch (error) {
@@ -310,7 +310,7 @@ export async function searchNotes(query: string, opts: SearchOptions = {}): Prom
   return mapRows<Note>(res[0].rows);
 }
 
-// db/notes.ts —— 新增：统计 / 列出 dirty 笔记
+// db/notes.ts —— New: Count / List dirty notes
 
 /** 统计待上传数量（dirty=1） */
 export async function countDirtyNotes(userId: number): Promise<number> {

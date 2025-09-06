@@ -260,10 +260,10 @@ async function migrateToV6(db: SQLiteDatabase): Promise<void> {
 async function migrateToV7(db: SQLiteDatabase): Promise<void> {
   await new Promise<void>((resolve, reject) => {
     db.transaction(tx => {
-      // notes 增加 dirty（若已存在会失败，失败就忽略）
+      // Add dirty column to notes (ignore if already exists)
       tx.executeSql(`ALTER TABLE notes ADD COLUMN dirty INTEGER DEFAULT 0`, [], () => {}, () => false);
       tx.executeSql(`CREATE INDEX IF NOT EXISTS idx_notes_dirty ON notes(dirty)`, []);
-      // 删除动作队列（永久删除用）
+      // Delete action queue (for permanent deletion)
       tx.executeSql(`
         CREATE TABLE IF NOT EXISTS sync_queue(
           id INTEGER PRIMARY KEY AUTOINCREMENT,

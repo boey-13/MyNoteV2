@@ -260,9 +260,42 @@ export default function EditNoteScreen({ route, navigation }: any) {
     }
     setConfirmDiscard(true);
   }
+  // Add images to draft
+  async function onAddImage() {
+    try {
+      const paths = await pickImagesForDraft(editingId ?? 'new');
+      if (paths.length > 0) {
+        setDraftImages(prev => [...prev, ...paths]);
+        setDirty(true);
+        showToast.success(`${paths.length} image(s) added`);
+      }
+    } catch (error) {
+      showToast.error('Failed to add images', error instanceof Error ? error.message : String(error));
+    }
+  }
 
-  async function onAddImage() { /* ...保留你的实现... */ }
-  async function onInsertInlineImage() { /* ...保留你的实现... */ }
+  // Insert images into editor
+  async function onInsertInlineImage() {
+    try {
+      const paths = await pickImagesForDraft(editingId ?? 'new');
+      if (paths.length > 0) {
+        // Add to draft images list
+        setDraftImages(prev => [...prev, ...paths]);
+        
+        // Insert images into editor
+        const imageHtml = paths.map(path => {
+          const uri = toImageUri(path);
+          return `<img src="${uri}" class="img-default" />`;
+        }).join('');
+        
+        editorRef.current?.insertHTML(imageHtml);
+        setDirty(true);
+        showToast.success(`${paths.length} image(s) inserted`);
+      }
+    } catch (error) {
+      showToast.error('Failed to insert images', error instanceof Error ? error.message : String(error));
+    }
+  }
 
   const gridItems = isEditing
     ? existingAssets.map(a => ({ id: a.id, uri: toImageUri(a.path) }))

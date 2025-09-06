@@ -3,8 +3,8 @@ import { getCurrentUserId } from '../utils/session';
 
 const BASE_URL =
   __DEV__
-    ? "http://10.0.2.2:5000/api" // Android 模拟器
-    : "http://10.0.2.2:5000/api"; // 按需改：iOS 模拟器可用 http://localhost:5000/api
+    ? "http://10.0.2.2:5000/api" // Android emulator
+    : "http://10.0.2.2:5000/api"; // Change as needed: iOS emulator can use http://localhost:5000/api
 
 const DEFAULT_TIMEOUT = 10000;
 
@@ -16,7 +16,7 @@ function withTimeout<T>(p: Promise<T>, ms = DEFAULT_TIMEOUT) {
 }
 
 async function authHeaders() {
-  const uid = (await getCurrentUserId()) ?? 1; // 兜底 1
+  const uid = (await getCurrentUserId()) ?? 1; // Fallback to 1
   return {
     'Content-Type': 'application/json',
     'X-User': String(uid),
@@ -46,7 +46,7 @@ export async function del(path: string) {
   return true;
 }
 
-// 不需要认证的POST请求（用于注册等）
+// POST requests that don't require authentication (for registration etc.)
 export async function postJsonNoAuth<T>(path: string, body: any) {
   const headers = {
     'Content-Type': 'application/json',
