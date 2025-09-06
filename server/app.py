@@ -1,11 +1,13 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
+from flask_socketio import SocketIO, emit, join_room
 import sqlite3, os, datetime
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "mynote_sync.db")
 
 app = Flask(__name__)
 CORS(app)
+socketio = SocketIO(app, cors_allowed_origins="*")  # ← 新增
 
 def now_iso():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
@@ -21,7 +23,9 @@ def init_db():
     c.execute("""
       CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT UNIQUE
+        username TEXT UNIQUE,
+        email TEXT,
+        password TEXT
       )
     """)
     c.execute("""
@@ -40,13 +44,6 @@ def init_db():
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
     """)
-    # 添加 dirty 字段（如果不存在）
-    try:
-        c.execute("ALTER TABLE notes ADD COLUMN dirty INTEGER DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass  # 字段已存在
-    
-    # 创建同步队列表
     c.execute("""
       CREATE TABLE IF NOT EXISTS sync_queue(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -99,55 +96,24 @@ def list_notes():
     conn.close()
     return jsonify({ "items": rows, "server_now": now_iso() })
 
-@app.post("/api/users/register")
-def register_user():
-    data = request.get_json(force=True)
-    username = data.get("username", "").strip()
-    email = data.get("email", "").strip()
-    password = data.get("password", "").strip()
-    
-    if not username or not email or not password:
-        return jsonify({"error": {"code": "MISSING_FIELDS", "message": "Username, email, and password are required"}}), 400
-    
-    conn = db(); c = conn.cursor()
-    try:
-        # 检查用户名和邮箱是否已存在
-        c.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
-        if c.fetchone():
-            conn.close()
-            return jsonify({"error": {"code": "USER_EXISTS", "message": "Username or email already exists"}}), 409
-        
-        # 创建新用户
-        c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", (username, email, password))
-        user_id = c.lastrowid
-        conn.commit()
-        conn.close()
-        
-        return jsonify({"id": user_id, "username": username, "email": email})
-    except Exception as e:
-        conn.close()
-        return jsonify({"error": {"code": "DATABASE_ERROR", "message": str(e)}}), 500
-
 @app.post("/api/notes/upsert")
 def upsert_note():
     uid = int(request.headers.get("X-User", "0"))
     data = request.get_json(force=True)
-    # 期待的字段
     title = data.get("title","")
     content = data.get("content","")
     folder_id = data.get("folder_id")
     is_fav = 1 if data.get("is_favorite") else 0
     is_del = 1 if data.get("is_deleted") else 0
     updated_at = data.get("updated_at") or now_iso()
-    remote_id = data.get("id")  # 远端 id（即本表 id）
+    remote_id = data.get("id")
     version = int(data.get("version") or 1)
 
     conn = db(); c = conn.cursor()
-    if remote_id:  # 更新现有
+    if remote_id:
         c.execute("SELECT * FROM notes WHERE id=? AND user_id=?", (remote_id, uid))
         row = c.fetchone()
         if row:
-            # LWW：只有当客户端更新时间更近才覆盖
             if (row["updated_at"] or "") < updated_at:
                 c.execute("""UPDATE notes SET title=?, content=?, folder_id=?, is_favorite=?, is_deleted=?,
                              updated_at=?, version=version+1 WHERE id=? AND user_id=?""",
@@ -156,23 +122,21 @@ def upsert_note():
                 c.execute("SELECT version, updated_at FROM notes WHERE id=?", (remote_id,))
                 rr = c.fetchone()
                 conn.close()
+                # ← 推送：该用户的设备收到"更新了"
+                socketio.emit('note_updated', {'id': int(remote_id)}, to=f"user:{uid}")
                 return jsonify({"id": remote_id, "version": rr["version"], "updated_at": rr["updated_at"]})
             else:
                 conn.close()
                 return jsonify({"id": remote_id, "version": row["version"], "updated_at": row["updated_at"]})
-        else:
-            # 如果该 id 不存在当前用户名下，则按"新建"
-            pass
+        # 如果该 id 不存在当前用户名下，则 fallthrough 当新建
 
-    # 新建
     c.execute("""INSERT INTO notes (user_id,title,content,folder_id,is_favorite,is_deleted,updated_at,version)
                  VALUES (?,?,?,?,?,?,?,?)""",
               (uid, title, content, folder_id, is_fav, is_del, updated_at, version))
     new_id = c.lastrowid
-    # 更新remote_id为id（对于后端，remote_id就是id）
-    c.execute("UPDATE notes SET remote_id=? WHERE id=?", (str(new_id), new_id))
     conn.commit()
     conn.close()
+    socketio.emit('note_updated', {'id': int(new_id)}, to=f"user:{uid}")  # ← 新建也推送
     return jsonify({"id": new_id, "version": version, "updated_at": updated_at})
 
 @app.delete("/api/notes/<int:rid>")
@@ -181,8 +145,46 @@ def delete_note(rid: int):
     conn = db(); c = conn.cursor()
     c.execute("DELETE FROM notes WHERE id=? AND user_id=?", (rid, uid))
     conn.commit(); conn.close()
+    socketio.emit('note_deleted', {'id': int(rid)}, to=f"user:{uid}")  # ← 删除推送
     return jsonify({"ok": True}), 200
+
+@app.post("/api/users/register")
+def register_user():
+    data = request.get_json(force=True)
+    username = data.get("username", "").strip()
+    email = data.get("email", "").strip()
+    password = data.get("password", "").strip()
+    
+    if not username or not email or not password:
+        return jsonify({"error": {"code": "INVALID_INPUT", "message": "Username, email and password are required"}}), 400
+    
+    conn = db()
+    c = conn.cursor()
+    
+    # Check if username or email already exists
+    c.execute("SELECT id FROM users WHERE username = ? OR email = ?", (username, email))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"error": {"code": "USER_EXISTS", "message": "Username or email already exists"}}), 409
+    
+    # Create new user
+    c.execute("INSERT INTO users (username, email, password) VALUES (?, ?, ?)", 
+              (username, email, password))
+    user_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    
+    return jsonify({"id": user_id, "username": username, "email": email})
+
+# Socket.IO 连接：按用户进房间
+@socketio.on('connect')
+def on_connect():
+    uid = request.args.get('user')
+    if not uid or not uid.isdigit():
+        return False  # 拒绝连接
+    join_room(f"user:{uid}")
+    emit('hello', {'ok': True, 'server_time': now_iso()})
 
 if __name__ == "__main__":
     init_db()
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    socketio.run(app, host="0.0.0.0", port=5000, debug=True)  # ← 用 socketio.run

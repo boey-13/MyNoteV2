@@ -26,6 +26,7 @@ import RegisterScreen from '../screens/RegisterScreen';
 import { getCurrentUserId, clearSession } from '../utils/session';
 import { showToast } from '../components/Toast';
 import { runFullSync } from '../utils/sync';
+import { startRealtime, stopRealtime } from '../utils/realtime';
 import { Text } from 'react-native';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
@@ -178,6 +179,16 @@ export default function RootNavigator() {
     });
     return () => sub.remove();
   }, []);
+
+  // WebSocket realtime connection
+  React.useEffect(() => {
+    if (signedIn) {
+      startRealtime();
+    } else {
+      stopRealtime();
+    }
+    return () => stopRealtime();
+  }, [signedIn]);
 
   // Periodically check login state changes (ensure state sync)
   React.useEffect(() => {
