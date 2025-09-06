@@ -9,7 +9,7 @@ SQLite.enablePromise(true);
  * v1: created app_meta + folders + (intended) notes/note_assets
  * v2: ensure notes, note_assets and related indexes exist (repair migration)
  */
-export const SCHEMA_VERSION = 6;
+export const SCHEMA_VERSION = 7;
 
 let dbInstance: SQLiteDatabase | null = null;
 
@@ -69,6 +69,11 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
   if (current < 6) {
     await migrateToV6(db);
     current = 6;
+    await setSchemaVersion(db, current);
+  }
+  if (current < 7) {
+    await migrateToV7(db);
+    current = 7;
     await setSchemaVersion(db, current);
   }
 }
@@ -247,6 +252,31 @@ async function migrateToV6(db: SQLiteDatabase): Promise<void> {
       // Recreate indexes
       tx.executeSql(`CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email)`, []);
       
+      resolve();
+    }, reject);
+  });
+}
+
+async function migrateToV7(db: SQLiteDatabase): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    db.transaction(tx => {
+      // notes 增加 dirty（若已存在会失败，失败就忽略）
+      tx.executeSql(`ALTER TABLE notes ADD COLUMN dirty INTEGER DEFAULT 0`, [], () => {}, () => false);
+      tx.executeSql(`CREATE INDEX IF NOT EXISTS idx_notes_dirty ON notes(dirty)`, []);
+      // 删除动作队列（永久删除用）
+      tx.executeSql(`
+        CREATE TABLE IF NOT EXISTS sync_queue(
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          user_id INTEGER NOT NULL,
+          action TEXT NOT NULL,          -- 'DELETE'
+          note_local_id INTEGER,
+          remote_id TEXT,
+          try_count INTEGER DEFAULT 0,
+          last_error TEXT,
+          created_at TEXT NOT NULL
+        )
+      `, []);
+      tx.executeSql(`CREATE INDEX IF NOT EXISTS idx_syncq_user ON sync_queue(user_id, created_at)`, []);
       resolve();
     }, reject);
   });

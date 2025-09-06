@@ -82,12 +82,15 @@ export default function RecycleBinScreen() {
   async function onDeleteSelected() {
     if (selected.size === 0) return;
     try {
+      console.log('Attempting to delete notes:', Array.from(selected));
       await deleteNotesPermanent(Array.from(selected));
+      console.log('Delete operation completed successfully');
       showToast.success('Deleted');
       setSelected(new Set());
       setSelectMode(false);
       await load();
     } catch (e: any) {
+      console.error('Delete operation failed:', e);
       showToast.error(e?.message ?? 'Delete failed');
     }
   }

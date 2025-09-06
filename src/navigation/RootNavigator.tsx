@@ -217,6 +217,7 @@ export default function RootNavigator() {
       />
       <Drawer.Screen name="About" component={AboutScreen} />
       <Drawer.Screen name="Profile" component={ProfileScreen} />
+      <Drawer.Screen name="Settings" component={SettingsScreen} />
     </Drawer.Navigator>
   );
 }

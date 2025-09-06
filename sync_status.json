@@ -1,0 +1,55 @@
+{
+  "notes": [
+    {
+      "id": "4",
+      "user_id": "1",
+      "title": "test2",
+      "content_html": "<div><p>test2</p></div>",
+      "created_at": "2025-09-06T02:33:22.461081",
+      "updated_at": "2025-09-06T02:33:22.461081",
+      "is_favorite": false,
+      "is_deleted": true,
+      "folder_id": null,
+      "version": 1
+    },
+    {
+      "id": "2",
+      "user_id": "1",
+      "title": "test2",
+      "content_html": "<div><p>test2</p></div>",
+      "created_at": "2025-09-06T02:29:59.014973",
+      "updated_at": "2025-09-06T02:29:59.014973",
+      "is_favorite": false,
+      "is_deleted": false,
+      "folder_id": null,
+      "version": 1
+    },
+    {
+      "id": "1",
+      "user_id": "1",
+      "title": "123",
+      "content_html": "<div><p>123</p></div>",
+      "created_at": "2025-09-06T02:23:45.145279",
+      "updated_at": "2025-09-06T02:32:46.869931",
+      "is_favorite": false,
+      "is_deleted": false,
+      "folder_id": null,
+      "version": 3
+    }
+  ],
+  "users": [
+    {
+      "id": "1",
+      "username": "boey",
+      "email": "123@gmail.com",
+      "created_at": "2025-09-06T02:22:35.173182"
+    }
+  ],
+  "sync_info": {
+    "total_notes": 3,
+    "active_notes": 2,
+    "deleted_notes": 1,
+    "total_users": 1,
+    "last_updated": "2025-09-06T02:34:00.793823"
+  }
+}
