@@ -1,5 +1,5 @@
 import React from 'react';
-import { AppState, View } from 'react-native';
+import { AppState, View, Image } from 'react-native';
 import {
   createDrawerNavigator,
   DrawerContentScrollView,
@@ -39,7 +39,7 @@ function AuthStack() {
   return (
     <Stack.Navigator>
       <Stack.Screen name="Login" component={LoginScreen} options={{ headerShown: false }} />
-      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerTitle: 'Register' }} />
+      <Stack.Screen name="Register" component={RegisterScreen} options={{ headerShown: false }} />
     </Stack.Navigator>
   );
 }
@@ -48,7 +48,21 @@ function Tabs() {
   return (
     <Tab.Navigator
       initialRouteName="Home"
-      screenOptions={{ headerShown: false, tabBarInactiveTintColor: '#6A4E3B' }}>
+      screenOptions={{ 
+        headerShown: false, 
+        tabBarInactiveTintColor: '#6A4E3B',
+        tabBarStyle: {
+          backgroundColor: '#E8EDF7',
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: -4,
+          },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 6,
+        },
+      }}>
       <Tab.Screen 
         name="Home" 
         component={HomeScreen} 
@@ -221,6 +235,34 @@ export default function RootNavigator() {
   return (
     <Drawer.Navigator
       initialRouteName={signedIn ? 'MainApp' : 'Auth'}
+      screenOptions={{
+        headerShown: true,
+        // 中间放 logo 图片
+        headerTitle: () => (
+          <Image
+            source={require('../../assets/images/logo1.png')}
+            style={{ width: 180, height: 60, resizeMode: 'contain' }}
+          />
+        ),
+        headerTitleAlign: 'center',
+        // 左边汉堡（可改色）
+        headerLeft: () => <DrawerToggleButton tintColor="#222" />,
+        // 右侧放个等宽占位，确保真正居中
+        headerRight: () => <View style={{ width: 44 }} />,
+        // 背景与阴影（可按你的主题调）
+        headerStyle: { 
+          backgroundColor: '#E8EDF7',
+          shadowColor: '#000',
+          shadowOffset: {
+            width: 0,
+            height: 4,
+          },
+          shadowOpacity: 0.2,
+          shadowRadius: 8,
+          elevation: 6,
+        },
+        headerShadowVisible: true,
+      }}
       drawerContent={(drawerProps) => (
         <CustomDrawerContent {...drawerProps} signedIn={signedIn} onSignOut={handleSignOut} />
       )}
@@ -230,8 +272,6 @@ export default function RootNavigator() {
         component={AppStack}
         options={{
           title: 'MyNote',
-          headerShown: true,
-          headerLeft: () => <DrawerToggleButton />,
           drawerItemStyle: signedIn ? undefined : { display: 'none' }, // Hide when not logged in
         }}
       />
