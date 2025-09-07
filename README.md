@@ -17,7 +17,7 @@ A modern, feature-rich note-taking application built with React Native, featurin
 
 ## 🏗️ Architecture
 
-### Three API Servers
+### Three API Servers (UECS3253 Compliant)
 1. **🌐 Web-based API**: OpenWeatherMap (Weather data)
 2. **🔌 WebSocket API**: Local WebSocket server (Real-time sync)
 3. **🌐 Web-based API**: Local REST API (User management & data)
@@ -25,9 +25,11 @@ A modern, feature-rich note-taking application built with React Native, featurin
 ### Tech Stack
 - **Frontend**: React Native, TypeScript
 - **Backend**: Python Flask, Flask-SocketIO
-- **Database**: SQLite
-- **Authentication**: Custom password hashing
+- **Database**: SQLite + AsyncStorage + File System
+- **Authentication**: SHA256 password hashing with salt
 - **APIs**: OpenWeatherMap, Custom REST/WebSocket
+- **Navigation**: Stack + Drawer + Tab Navigation
+- **Components**: 3+ Third-party components with external stylesheets
 
 ## 🚀 Quick Start
 
