@@ -1,12 +1,7 @@
 // src/utils/crypto.ts
-// Password encryption utilities using a simple hash function
-// Note: For production, use a proper bcrypt library
+// Password encryption utilities using crypto-js to match backend
 
-// Simple hash function (for demo purposes)
-// In production, use: npm install react-native-bcrypt
-
-// Salt rounds for bcrypt (higher = more secure but slower)
-const SALT_ROUNDS = 12;
+import CryptoJS from 'crypto-js';
 
 /**
  * Hash a password using a simple hash function
@@ -15,10 +10,9 @@ const SALT_ROUNDS = 12;
  */
 export async function hashPassword(password: string): Promise<string> {
   try {
-    // Simple hash function for demo purposes
-    // In production, use proper bcrypt: npm install react-native-bcrypt
-    const salt = generateSalt(16);
-    const hash = await simpleHash(password + salt);
+    // Use SHA256 to match backend hashlib.sha256
+    const salt = generateSalt(32); // 32 chars = 16 bytes (matches backend secrets.token_hex(16))
+    const hash = CryptoJS.SHA256(password + salt).toString();
     return `${salt}:${hash}`;
   } catch (error) {
     console.error('Password hashing error:', error);
@@ -26,17 +20,6 @@ export async function hashPassword(password: string): Promise<string> {
   }
 }
 
-// Simple hash function (for demo purposes only)
-async function simpleHash(input: string): Promise<string> {
-  // This is a very basic hash function - NOT secure for production
-  let hash = 0;
-  for (let i = 0; i < input.length; i++) {
-    const char = input.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash; // Convert to 32-bit integer
-  }
-  return Math.abs(hash).toString(16);
-}
 
 /**
  * Compare a password with its hash
@@ -52,8 +35,8 @@ export async function comparePassword(password: string, hash: string): Promise<b
       return false;
     }
     
-    // Hash the input password with the same salt
-    const inputHash = await simpleHash(password + salt);
+    // Hash the input password with the same salt using SHA256
+    const inputHash = CryptoJS.SHA256(password + salt).toString();
     
     // Compare hashes
     return inputHash === storedHash;
