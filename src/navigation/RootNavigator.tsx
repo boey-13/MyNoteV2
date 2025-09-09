@@ -116,7 +116,7 @@ function AppStack() {
         component={EditNoteScreen} 
         options={{ 
           headerShown: true,
-          title: 'Edit Note',
+          title: 'Note', // Will be dynamically updated by the screen
           headerBackTitle: 'Back'
         }} 
       />

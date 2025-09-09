@@ -1,5 +1,5 @@
 // src/screens/EditNoteScreen.tsx
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, useLayoutEffect } from 'react';
 import {
   KeyboardAvoidingView, Platform, ScrollView, View, Text,
   Keyboard, InteractionManager, TextInput, StyleSheet, Dimensions,
@@ -35,6 +35,13 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const isEditing = useMemo(() => !!editingId, [editingId]);
   const { theme } = useAppTheme();
   const isFocused = useIsFocused();
+
+  // Set dynamic header title based on editing mode
+  useLayoutEffect(() => {
+    navigation.setOptions({
+      title: isEditing ? 'Edit Note' : 'Create Note',
+    });
+  }, [navigation, isEditing]);
 
   // form state
   const [title, setTitle] = useState('');
