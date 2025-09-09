@@ -9,6 +9,9 @@ import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
 import { listFolders } from '../db/folders';
 import RenderHtml from 'react-native-render-html';
+import { startRealtime, stopRealtime } from '../utils/realtime';
+import io from 'socket.io-client';
+import { getCurrentUserId } from '../utils/session';
 
 type FolderOpt = { label: string; value: number | 'ALL' | 'NULL' };
 
@@ -82,6 +85,57 @@ export default function SearchScreen({ navigation }: any) {
     })();
   }, []);
 
+  // Start WebSocket for real-time updates
+  useEffect(() => {
+    let socket: any = null;
+    
+    const setupWebSocket = async () => {
+      const uid = (await getCurrentUserId()) ?? 1;
+      const WS_URL = __DEV__ ? 'http://localhost:5000' : 'http://10.0.2.2:5000';
+      
+      socket = io(WS_URL, {
+        path: '/socket.io',
+        transports: ['polling', 'websocket'],
+        reconnection: true,
+        query: { user: String(uid) },
+      });
+
+      socket.on('connect', () => {
+        console.log('🔌 SearchScreen WebSocket connected');
+      });
+
+      socket.on('note_created', (data: any) => {
+        console.log('📝 Note created, refreshing search results:', data);
+        setTimeout(() => {
+          doSearch(query, opts);
+        }, 100);
+      });
+
+      socket.on('note_updated', (data: any) => {
+        console.log('📝 Note updated, refreshing search results:', data);
+        setTimeout(() => {
+          doSearch(query, opts);
+        }, 100);
+      });
+
+      socket.on('note_deleted', (data: any) => {
+        console.log('🗑️ Note deleted, refreshing search results:', data);
+        setTimeout(() => {
+          doSearch(query, opts);
+        }, 100);
+      });
+    };
+
+    setupWebSocket();
+
+    return () => {
+      if (socket) {
+        socket.removeAllListeners();
+        socket.disconnect();
+      }
+    };
+  }, []);
+
   const opts: SearchOptions = useMemo(() => {
     return {
       favoritesOnly,
@@ -103,6 +157,17 @@ export default function SearchScreen({ navigation }: any) {
       setLoading(false);
     }
   }, []);
+
+  // Refresh search results when notes change
+  const refreshSearchResults = useCallback(async () => {
+    console.log('🔄 Refreshing search results due to note changes...');
+    try {
+      const rows = await searchNotes(query, opts);
+      setResults(rows);
+    } catch (e: any) {
+      console.error('[Search] refresh failed', e);
+    }
+  }, [query, opts]);
 
   useEffect(() => {
     if (timerRef.current) clearTimeout(timerRef.current);

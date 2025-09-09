@@ -94,6 +94,10 @@ logs/
 *.sqlite
 *.sqlite3
 
+# Server data files (contain sensitive user data)
+sync_status.json
+server/sync_status.json
+
 # OS generated files
 Thumbs.db
 ehthumbs.db
