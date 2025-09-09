@@ -83,6 +83,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const draftTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorRef = useRef<RichEditor>(null);
   const titleRef = useRef<TextInput>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
   const programmaticSetRef = useRef(false); // avoid dirty when we set HTML programmatically
 
   // Content normalization utilities
@@ -271,7 +272,13 @@ export default function EditNoteScreen({ route, navigation }: any) {
       setTimeout(() => {
         const htmlContent = loadedContent && loadedContent.trim().length > 0 ? loadedContent : '<p><br></p>';
         editorRef.current?.setContentHTML(htmlContent);
-        setTimeout(() => (programmaticSetRef.current = false), 50);
+        setTimeout(() => {
+          programmaticSetRef.current = false;
+          // Auto scroll to bottom of editor content after loading
+          setTimeout(() => {
+            scrollViewRef.current?.scrollToEnd({ animated: true });
+          }, 300);
+        }, 50);
       }, 0);
     })();
   }, [editingId]);
@@ -434,6 +441,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
       if (paths.length > 0) {
         setDraftImages(prev => [...prev, ...paths]);
         setDirty(true);
+        
+        // Auto scroll to show the new attachments
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 200);
+        
         showToast.success(`${paths.length} image(s) added`);
       }
     } catch (error) {
@@ -457,6 +470,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
         
         editorRef.current?.insertHTML(imageHtml);
         setDirty(true);
+        
+        // Auto scroll to the inserted content
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 100);
+        
         showToast.success(`${paths.length} image(s) inserted`);
       }
     } catch (error) {
@@ -472,6 +491,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
     <View style={styles.container}>
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
+          ref={scrollViewRef}
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="always"
@@ -719,7 +739,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
               {isFocused && !navigating && (
                 <RichEditor
                   ref={editorRef}
-                  initialHeight={220}
+                  initialHeight={400}
                   initialContentHTML={content || '<p><br></p>'}
                   placeholder="Write something..."
                   editorStyle={{
@@ -751,6 +771,10 @@ export default function EditNoteScreen({ route, navigation }: any) {
                       editorRef.current.setContentHTML(content);
                       setTimeout(() => {
                         programmaticSetRef.current = false;
+                        // Auto scroll to bottom after editor loads
+                        setTimeout(() => {
+                          scrollViewRef.current?.scrollToEnd({ animated: true });
+                        }, 200);
                       }, 100);
                     }
                   }}
@@ -959,7 +983,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E9ECEF',
     overflow: 'hidden',
-    minHeight: 220,
+    minHeight: 400,
   },
   actionButtons: {
     flexDirection: 'row',

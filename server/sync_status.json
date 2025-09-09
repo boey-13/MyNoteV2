@@ -1,6 +1,6 @@
 {
   "sync_status": {
-    "last_updated": "2025-09-09T17:26:09Z",
+    "last_updated": "2025-09-09T17:48:40Z",
     "status": "active",
     "total_users": 3,
     "total_notes": 3,
@@ -33,12 +33,12 @@
       "id": 17,
       "user_id": 3,
       "title": "123",
-      "content": "<p>123</p>",
+      "content": "<p>123</p><div><img src=\"file:///data/user/0/com.mynotev2/files/attachments/_drafts/17/1757439634699...",
       "folder_id": 21,
       "is_favorite": false,
       "is_deleted": false,
-      "updated_at": "2025-09-09T17:26:07.988Z",
-      "version": 4,
+      "updated_at": "2025-09-09T17:48:37.343Z",
+      "version": 9,
       "server_id": 17,
       "client_remote_id": null,
       "dirty": false
@@ -73,6 +73,56 @@
     }
   ],
   "recent_operations": [
+    {
+      "type": "note_updates",
+      "timestamp": "2025-09-09T17:48:40Z",
+      "data": {
+        "note_id": 17,
+        "user_id": 3,
+        "title": "123",
+        "version": 9
+      }
+    },
+    {
+      "type": "note_updates",
+      "timestamp": "2025-09-09T17:43:14Z",
+      "data": {
+        "note_id": 17,
+        "user_id": 3,
+        "title": "123",
+        "version": 8
+      }
+    },
+    {
+      "type": "note_updates",
+      "timestamp": "2025-09-09T17:41:44Z",
+      "data": {
+        "note_id": 17,
+        "user_id": 3,
+        "title": "123",
+        "version": 7
+      }
+    },
+    {
+      "type": "note_updates",
+      "timestamp": "2025-09-09T17:41:18Z",
+      "data": {
+        "note_id": 17,
+        "user_id": 3,
+        "title": "123",
+        "version": 6
+      }
+    },
+    {
+      "type": "note_updates",
+      "timestamp": "2025-09-09T17:41:08Z",
+      "data": {
+        "note_id": 17,
+        "user_id": 3,
+        "title": "123",
+        "version": 5
+      }
+    },
     {
       "type": "note_updates",
       "timestamp": "2025-09-09T17:26:09Z",
@@ -119,52 +169,6 @@
         "user_id": 3,
         "title": "tetetet",
         "version": 16
-      }
-    },
-    {
-      "type": "note_updates",
-      "timestamp": "2025-09-09T17:21:29Z",
-      "data": {
-        "note_id": 20,
-        "user_id": 3,
-        "title": "tetetet",
-        "version": 15
-      }
-    },
-    {
-      "type": "folder_creations",
-      "timestamp": "2025-09-09T17:10:53Z",
-      "data": {
-        "folder_id": 27,
-        "user_id": 3,
-        "name": "Test New Folder"
-      }
-    },
-    {
-      "type": "folder_creations",
-      "timestamp": "2025-09-09T17:07:51Z",
-      "data": {
-        "folder_id": 26,
-        "user_id": 3,
-        "name": "12345"
-      }
-    },
-    {
-      "type": "folder_creations",
-      "timestamp": "2025-09-09T16:56:02Z",
-      "data": {
-        "folder_id": 25,
-        "user_id": 3,
-        "name": "test4"
-      }
-    },
-    {
-      "type": "folder_creations",
-      "timestamp": "2025-09-09T16:51:24Z",
-      "data": {
-        "folder_id": 24,
-        "user_id": 3,
-        "name": "test"
       }
     }
   ]
