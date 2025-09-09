@@ -170,6 +170,10 @@ The application automatically generates a real-time sync status file at `server/
 - Recent operations history
 - WebSocket connections
 
+**⚠️ Important**: This file contains sensitive user data and is automatically ignored by git (see `.gitignore`). Each developer will have their own local `sync_status.json` file.
+
+**📄 Example File**: See `server/sync_status.json.example` for the expected file structure.
+
 ### View Sync Status
 ```bash
 # Via API endpoint
@@ -227,7 +231,9 @@ MyNoteV2/
 │   └── config/            # Configuration files
 ├── server/                # Backend server
 │   ├── app.py            # Flask application
-│   └── mynote_sync.db    # SQLite database
+│   ├── mynote_sync.db    # SQLite database
+│   ├── sync_status.json  # Real-time sync status (auto-generated, git-ignored)
+│   └── sync_status.json.example  # Example sync status file structure
 ├── android/              # Android-specific code
 ├── ios/                  # iOS-specific code
 └── assets/              # Images, fonts, etc.
@@ -389,6 +395,14 @@ When modifying database schema:
 2. Create migration script
 3. Test migration on development database
 4. Document changes in README
+
+### Sensitive Files
+The following files contain sensitive data and are automatically ignored by git:
+- `server/sync_status.json` - Contains user data and note content
+- `server/mynote_sync.db` - SQLite database with user data
+- `backend/mynote_sync.db` - Client-side database
+
+**Never commit these files!** Each developer will have their own local copies.
 
 ## 📄 License
 

@@ -1,0 +1,45 @@
+{
+  "timestamp": "2024-01-01T00:00:00Z",
+  "server_status": "running",
+  "users": [
+    {
+      "id": 1,
+      "username": "example_user",
+      "email": "user@example.com",
+      "created_at": "2024-01-01T00:00:00Z"
+    }
+  ],
+  "notes": [
+    {
+      "id": 1,
+      "title": "Example Note",
+      "content": "This is an example note for demonstration purposes",
+      "user_id": 1,
+      "folder_id": null,
+      "folder_name": null,
+      "is_favorite": 0,
+      "is_deleted": 0,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z",
+      "server_id": 1,
+      "client_remote_id": 1
+    }
+  ],
+  "recent_operations": [
+    {
+      "timestamp": "2024-01-01T00:00:00Z",
+      "type": "note_created",
+      "user_id": 1,
+      "note_id": 1,
+      "title": "Example Note"
+    }
+  ],
+  "statistics": {
+    "total_users": 1,
+    "total_notes": 1,
+    "active_notes": 1,
+    "deleted_notes": 0,
+    "favorite_notes": 0,
+    "total_folders": 0
+  }
+}
