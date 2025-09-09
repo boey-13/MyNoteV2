@@ -80,6 +80,51 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const titleRef = useRef<TextInput>(null);
   const programmaticSetRef = useRef(false); // avoid dirty when we set HTML programmatically
 
+  // Content normalization utilities
+  function normalizeEditorHtml(html?: string): string {
+    if (!html) return '';
+    return html
+      .replace(/&nbsp;/gi, '')
+      .replace(/<p>\s*<\/p>/gi, '')
+      .replace(/<p><br\s*\/?><\/p>/gi, '')
+      .replace(/<br\s*\/?>/gi, '')
+      .trim();
+  }
+
+  function isEditorContentEmpty(html?: string): boolean {
+    if (!html) return true;
+    // 有媒体就算"有内容"
+    if (/<(img|video|audio|iframe)\b/i.test(html)) return false;
+    // 去标签后的纯文本是否为空
+    const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
+    return text.length === 0;
+  }
+
+  function hasMeaningfulChanges(): boolean {
+    // 只有在dirty状态下才检查是否有实际内容
+    if (!dirty) {
+      console.log('hasMeaningfulChanges: not dirty, returning false');
+      return false;
+    }
+    
+    // 检查是否有实际内容
+    const hasTitle = title.trim().length > 0;
+    const hasContent = !isEditorContentEmpty(content);
+    const hasImages = draftImages.length > 0;
+    
+    console.log('hasMeaningfulChanges debug:', {
+      dirty,
+      hasTitle,
+      hasContent,
+      hasImages,
+      title: title.trim(),
+      content: content.substring(0, 100),
+      contentEmpty: isEditorContentEmpty(content)
+    });
+    
+    return hasTitle || hasContent || hasImages;
+  }
+
   const richWebViewProps = useMemo(
     () => ({
       originWhitelist: ['*'],
@@ -177,7 +222,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
       await loadFolderOptions(loadedFolderId);
 
       setTitle(loadedTitle);
-      setContent(loadedContent || '<p><br></p>');
+      setContent(normalizeEditorHtml(loadedContent) || '');
 
       // Ensure editor shows the loaded HTML but do not mark as dirty
       programmaticSetRef.current = true;
@@ -193,16 +238,24 @@ export default function EditNoteScreen({ route, navigation }: any) {
 
   useEffect(() => {
     const unsub = navigation.addListener('beforeRemove', (e: any) => {
+      console.log('beforeRemove triggered, bypassGuardRef.current =', bypassGuardRef.current);
       if (bypassGuardRef.current) return;
       
-      if (!dirty) return;
+      // 用"是否有实际变更"来判断要不要拦截（见 B 部分）
+      const hasChanges = hasMeaningfulChanges();
+      console.log('beforeRemove: hasMeaningfulChanges =', hasChanges);
       
-
+      if (!hasChanges) {
+        console.log('beforeRemove: no meaningful changes, going back directly');
+        e.preventDefault();
+        return releaseFocusThen(() => navigation.dispatch(e.data.action));
+      }
+      console.log('beforeRemove: has meaningful changes, showing keep draft dialog');
       e.preventDefault();
       setConfirmLeaveKeepDraft(true);
     });
     return unsub;
-  }, [navigation, dirty]);
+  }, [navigation]);
 
   useFocusEffect(
     React.useCallback(() => {
@@ -264,6 +317,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
   // autosave draft (title/content/attachments)
   useEffect(() => {
     if (!dirty) return;
+    if (!hasMeaningfulChanges()) {
+      // 没有实际内容就不要落空草稿；如果之前有草稿可以选择清理
+      // await clearDraft(editingId ?? 'new'); // 如需立即清草稿可放开
+      return;
+    }
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
     draftTimerRef.current = setTimeout(() => {
       const draft: NoteDraft = {
@@ -281,9 +339,10 @@ export default function EditNoteScreen({ route, navigation }: any) {
     if (!validate()) return;
     setSaving(true);
     const normalizedFolderId = folderId === 'NULL' ? null : (folderId as number);
+    const finalContent = isEditorContentEmpty(content) ? '' : content;
     try {
       if (isEditing && editingId) {
-        await updateNote(editingId, { title: title.trim(), content });
+        await updateNote(editingId, { title: title.trim(), content: finalContent });
         await setNoteFolder(editingId, normalizedFolderId);
         showToast.success('Saved');
         setDirty(false);
@@ -291,11 +350,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
         bypassGuardRef.current = true;
         await releaseFocusThen(() => navigation.goBack());
       } else {
-        const n = await createNote({ title: title.trim(), content });
+        const n = await createNote({ title: title.trim(), content: finalContent });
         await setNoteFolder(n.id, normalizedFolderId);
         await moveDraftAttachmentsToNote('new', n.id);
-        const finalHtml = rewriteDraftImageSrc(content, 'new', n.id);
-        if (finalHtml !== content) await updateNote(n.id, { content: finalHtml });
+        const finalHtml = rewriteDraftImageSrc(finalContent, 'new', n.id);
+        if (finalHtml !== finalContent) await updateNote(n.id, { content: finalHtml });
         showToast.success('Created');
         setDirty(false);
         await clearDraft('new');
@@ -310,11 +369,16 @@ export default function EditNoteScreen({ route, navigation }: any) {
   }
 
   function onCancel() {
-    if (!dirty) {
+    console.log('onCancel called, checking hasMeaningfulChanges...');
+    const hasChanges = hasMeaningfulChanges();
+    console.log('onCancel: hasMeaningfulChanges =', hasChanges);
+    
+    if (!hasChanges) {
+      console.log('onCancel: no meaningful changes, going back directly');
       bypassGuardRef.current = true;
-      navigation.goBack();
-      return;
+      return releaseFocusThen(() => navigation.goBack());
     }
+    console.log('onCancel: has meaningful changes, showing confirm dialog');
     setConfirmDiscard(true);
   }
   // Add images to draft
@@ -365,6 +429,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
           style={styles.content}
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="always"
+          removeClippedSubviews={false}
         >
           {/* Header Section */}
           <View style={styles.section}>
@@ -381,7 +446,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
                 ref={titleRef}
                 style={styles.titleInput}
                 value={title}
-                onChangeText={(t) => { setTitle(t); setDirty(true); }}
+                onChangeText={(t) => {
+                  setTitle(t);
+                  // 去掉无意义空白抖动
+                  // 只有从空→非空或内容确实不同才算脏
+                  if (t.trim() !== title.trim()) setDirty(true);
+                }}
                 placeholder="Enter a title"
                 placeholderTextColor="#999"
               />
@@ -459,7 +529,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
                   [actions.heading2]: () => <Text style={styles.toolbarIcon}>H2</Text>,
                   [actions.heading3]: () => <Text style={styles.toolbarIcon}>H3</Text>,
                 }}
-                iconTint="#455B96"
+                iconTint="#999999"
                 selectedIconTint="#455B96"
                 style={styles.toolbar}
               />
@@ -527,8 +597,14 @@ export default function EditNoteScreen({ route, navigation }: any) {
                   }}
                   {...(richWebViewProps as any)}
                   onChange={(html: string) => {
-                    setContent(html);
-                    if (!programmaticSetRef.current) setDirty(true);
+                    const normalized = normalizeEditorHtml(html);
+                    const wasEmpty = isEditorContentEmpty(content);
+                    const nowEmpty = isEditorContentEmpty(normalized);
+                    setContent(normalized);
+                    if (!programmaticSetRef.current) {
+                      // 空→空 的变化（多半是样式标签）不算脏
+                      if (!(wasEmpty && nowEmpty)) setDirty(true);
+                    }
                   }}
                   onLoadEnd={() => {
                     // Force update content when editor loads
@@ -591,7 +667,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
         onConfirm={() => {
           setConfirmLeaveKeepDraft(false);
           bypassGuardRef.current = true;
-          navigation.goBack();
+          releaseFocusThen(() => navigation.goBack());
         }}
       />
 

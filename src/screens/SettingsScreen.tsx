@@ -11,6 +11,8 @@ import { countDeleteQueue } from '../db/syncQueue';
 import { checkDatabaseSchema, forceCreateSyncQueue } from '../utils/checkDatabase';
 import { getCurrentUserId } from '../utils/session';
 import { getConnectionStatus, addConnectionListener } from '../utils/realtimeStatus';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 
 export default function SettingsScreen({ navigation }: any) {
   const { theme } = useAppTheme();
@@ -144,7 +146,7 @@ export default function SettingsScreen({ navigation }: any) {
           <Text style={styles.sectionTitle}>Sync & Data</Text>
           <View style={styles.actionsCard}>
             <TouchableOpacity style={styles.actionItem} onPress={handleSyncNow}>
-              <Text style={styles.actionIcon}>🔄</Text>
+              <Icon name="refresh-cw" size={20} color="#455B96" style={styles.actionIcon} />
               <View style={styles.actionInfo}>
                 <Text style={styles.actionTitle}>Sync Now</Text>
                 <Text style={styles.actionDescription}>Sync all pending changes</Text>
@@ -152,7 +154,7 @@ export default function SettingsScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionItem} onPress={showPendingUploads}>
-              <Text style={styles.actionIcon}>📊</Text>
+              <Icon name="bar-chart-2" size={20} color="#455B96" style={styles.actionIcon} />
               <View style={styles.actionInfo}>
                 <Text style={styles.actionTitle}>Show Pending Uploads</Text>
                 <Text style={styles.actionDescription}>View pending sync items</Text>
@@ -160,7 +162,7 @@ export default function SettingsScreen({ navigation }: any) {
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.actionItem} onPress={printDirtyList}>
-              <Text style={styles.actionIcon}>📝</Text>
+              <Icon name="file-text" size={20} color="#455B96" style={styles.actionIcon} />
               <View style={styles.actionInfo}>
                 <Text style={styles.actionTitle}>Print Dirty List</Text>
                 <Text style={styles.actionDescription}>Debug: Print to console</Text>
@@ -269,7 +271,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E9ECEF',
   },
   actionIcon: {
-    fontSize: 20,
     marginRight: 15,
     width: 30,
   },

@@ -2,6 +2,8 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View, ScrollView as HScrollView, Pressable, StyleSheet, Dimensions, Image, TouchableOpacity, Alert } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 import { listFavorites, listNotes, listNotesByFolder, softDeleteNote } from '../db/notes';
 import NoteCard from '../components/NoteCard';
 import CustomButton from '../components/CustomButton';
@@ -244,7 +246,7 @@ export default function HomeScreen({ navigation }: any) {
           <View style={styles.notesGrid}>
             {notes.length === 0 ? (
               <View style={styles.emptyNotesContainer}>
-                <Text style={styles.emptyNotesIcon}>✏️</Text>
+                <Icon name="edit-3" size={48} color="#CCCCCC" style={styles.emptyNotesIcon} />
                 <Text style={styles.emptyNotesTitle}>No notes yet</Text>
                 <Text style={styles.emptyNotesSubtitle}>
                   Tap the + button below to create your first note
@@ -503,21 +505,19 @@ const styles = StyleSheet.create({
   },
   selectionIndicator: {
     position: 'absolute',
-    top: 8,
-    left: 8,
+    top: 10,
+    right: 10,
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 2,
-    borderColor: '#455B96',
+    backgroundColor: '#455B96',
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 1,
   },
   selectionCheckbox: {
     fontSize: 14,
-    color: '#455B96',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
   emptyNotesContainer: {
@@ -528,9 +528,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   emptyNotesIcon: {
-    fontSize: 48,
     marginBottom: 16,
-    color: '#666',
     opacity: 0.6,
   },
   emptyNotesTitle: {

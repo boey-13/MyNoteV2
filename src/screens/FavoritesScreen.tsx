@@ -6,6 +6,8 @@ import { listFavorites } from '../db/notes';
 import NoteCard from '../components/NoteCard';
 import { showToast } from '../components/Toast';
 import RenderHtml from 'react-native-render-html';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 
 
 const stripImages = (html: string) => html.replace(/<img[\s\S]*?>/gi, '');
@@ -99,7 +101,7 @@ export default function FavoritesScreen({ navigation }: any) {
         <View style={styles.section}>
           {favs.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>★</Text>
+              <Icon name="star" size={48} color="#CCCCCC" style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No favorite notes yet</Text>
               <Text style={styles.emptySubtext}>Tap the star icon on any note to add it to favorites</Text>
             </View>
@@ -160,9 +162,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 15,
-    color: '#666',
     opacity: 0.6,
   },
   emptyText: {

@@ -1,7 +1,9 @@
 // src/screens/AboutScreen.tsx
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, Dimensions, TouchableOpacity, Linking, Image } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 
 export default function AboutScreen({ navigation }: any) {
   const { theme } = useAppTheme();
@@ -27,27 +29,27 @@ export default function AboutScreen({ navigation }: any) {
           <Text style={styles.sectionTitle}>Features</Text>
           <View style={styles.featureList}>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📝</Text>
+              <Icon name="edit-3" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Rich text editing with formatting</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>📁</Text>
+              <Icon name="folder" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Folder organization system</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>⭐</Text>
+              <Icon name="star" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Favorites and quick access</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🔍</Text>
+              <Icon name="search" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Advanced search functionality</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>☁️</Text>
+              <Icon name="cloud" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Cloud sync and backup</Text>
             </View>
             <View style={styles.featureItem}>
-              <Text style={styles.featureIcon}>🖼️</Text>
+              <Icon name="image" size={24} color="#455B96" style={styles.featureIcon} />
               <Text style={styles.featureText}>Image attachments support</Text>
             </View>
           </View>
@@ -84,7 +86,7 @@ export default function AboutScreen({ navigation }: any) {
               style={styles.contactItem}
               onPress={() => openLink('mailto:support@mynotev2.com')}
             >
-              <Text style={styles.contactIcon}>📧</Text>
+              <Icon name="mail" size={24} color="#333" style={styles.contactIcon} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactTitle}>Email Support</Text>
                 <Text style={styles.contactSubtitle}>support@mynotev2.com</Text>
@@ -95,7 +97,7 @@ export default function AboutScreen({ navigation }: any) {
               style={styles.contactItem}
               onPress={() => openLink('https://github.com/mynotev2')}
             >
-              <Text style={styles.contactIcon}>🐙</Text>
+              <Icon name="github" size={24} color="#333" style={styles.contactIcon} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactTitle}>GitHub</Text>
                 <Text style={styles.contactSubtitle}>View source code</Text>
@@ -106,7 +108,7 @@ export default function AboutScreen({ navigation }: any) {
               style={styles.contactItem}
               onPress={() => openLink('https://mynotev2.com')}
             >
-              <Text style={styles.contactIcon}>🌐</Text>
+              <Icon name="globe" size={24} color="#333" style={styles.contactIcon} />
               <View style={styles.contactInfo}>
                 <Text style={styles.contactTitle}>Website</Text>
                 <Text style={styles.contactSubtitle}>mynotev2.com</Text>
@@ -136,9 +138,15 @@ export default function AboutScreen({ navigation }: any) {
           <Text style={styles.footerText}>
             © 2024 MyNote V2. All rights reserved.
           </Text>
-          <Text style={styles.footerSubtext}>
-            Made with ❤️ for note-taking enthusiasts
-          </Text>
+          <View style={styles.footerSubtextContainer}>
+            <Text style={styles.footerSubtext}>
+              Made with 
+            </Text>
+            <Icon name="heart" size={16} color="#E74C3C" />
+            <Text style={styles.footerSubtext}>
+              {' '}for note-taking enthusiasts
+            </Text>
+          </View>
         </View>
       </ScrollView>
     </View>
@@ -202,7 +210,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   featureIcon: {
-    fontSize: 20,
     marginRight: 12,
     width: 30,
   },
@@ -245,7 +252,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#E9ECEF',
   },
   contactIcon: {
-    fontSize: 20,
     marginRight: 12,
     width: 30,
   },
@@ -289,6 +295,10 @@ const styles = StyleSheet.create({
     color: '#999',
     marginBottom: 5,
     fontFamily: 'Poppins-Regular',
+  },
+  footerSubtextContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   footerSubtext: {
     fontSize: 12,

@@ -14,6 +14,8 @@ import ConfirmDialog from '../components/ConfirmDialog';
 import { showToast } from '../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
 import RenderHtml from 'react-native-render-html';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 
 const stripImages = (html: string) => html.replace(/<img[\s\S]*?>/gi, '');
 
@@ -245,7 +247,7 @@ export default function RecycleBinScreen() {
         <View style={styles.section}>
           {deleted.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🗑</Text>
+              <Icon name="trash-2" size={48} color="#CCCCCC" style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No deleted notes</Text>
               <Text style={styles.emptySubtext}>Deleted notes will appear here</Text>
             </View>
@@ -440,9 +442,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 15,
-    color: '#666',
     opacity: 0.6,
   },
   emptyText: {

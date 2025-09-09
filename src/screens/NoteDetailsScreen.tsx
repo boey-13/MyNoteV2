@@ -2,6 +2,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { ScrollView, Text, View, useWindowDimensions, StyleSheet, Dimensions, TouchableOpacity, StatusBar, SafeAreaView } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 import { getNote, softDeleteNote, toggleFavorite } from '../db/notes';
 import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
@@ -76,14 +78,14 @@ export default function NoteDetailsScreen({ route, navigation }: any) {
             style={styles.actionButton}
             onPress={() => navigation.navigate('EditNote', { noteId })}
           >
-            <Text style={styles.actionButtonIcon}>✏️</Text>
+            <Icon name="edit-3" size={24} color="#455B96" style={styles.actionButtonIcon} />
           </TouchableOpacity>
           
           <TouchableOpacity 
             style={styles.actionButton}
             onPress={() => setConfirmTrash(true)}
           >
-            <Text style={styles.actionButtonIcon}>🗑️</Text>
+            <Icon name="trash-2" size={24} color="#DC3545" style={styles.actionButtonIcon} />
           </TouchableOpacity>
           
           <TouchableOpacity 
@@ -97,9 +99,13 @@ export default function NoteDetailsScreen({ route, navigation }: any) {
               }
             }}
           >
-            <Text style={[styles.actionButtonIcon, { color: '#FFD700' }]}>
-              {note.is_favorite ? '★' : '☆'}
-            </Text>
+            <Icon 
+              name={note.is_favorite ? "star" : "star"} 
+              size={24} 
+              color={note.is_favorite ? "#FFD700" : "#CCCCCC"} 
+              style={styles.actionButtonIcon}
+              solid={note.is_favorite}
+            />
           </TouchableOpacity>
         </View>
       </View>
@@ -112,7 +118,8 @@ export default function NoteDetailsScreen({ route, navigation }: any) {
           <View style={styles.metaInfo}>
             {folderName !== null && (
               <View style={styles.folderChip}>
-                <Text style={styles.folderChipText}>📁 {folderName}</Text>
+                <Icon name="folder" size={16} color="#455B96" style={styles.folderIcon} />
+                <Text style={styles.folderChipText}>{folderName}</Text>
               </View>
             )}
             <Text style={styles.updateTime}>
@@ -203,8 +210,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
   actionButtonIcon: {
-    fontSize: 18,
-    color: '#333',
+    // fontSize removed for Icon component
   },
   titleSection: {
     paddingHorizontal: 20,
@@ -232,6 +238,11 @@ const styles = StyleSheet.create({
     borderRadius: 15,
     borderWidth: 1,
     borderColor: '#3498DB',
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  folderIcon: {
+    marginRight: 4,
   },
   folderChipText: {
     color: '#2980B9',
