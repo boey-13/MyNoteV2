@@ -20,7 +20,6 @@ import EditNoteScreen from '../screens/EditNoteScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import AboutScreen from '../screens/AboutScreen';
-import ImageViewerScreen from '../screens/ImageViewerScreen';
 import LoginScreen from '../screens/LoginScreen';
 import RegisterScreen from '../screens/RegisterScreen';
 import { getCurrentUserId, clearSession } from '../utils/session';
@@ -117,15 +116,6 @@ function AppStack() {
         options={{ 
           headerShown: true,
           title: 'Note', // Will be dynamically updated by the screen
-          headerBackTitle: 'Back'
-        }} 
-      />
-      <Stack.Screen 
-        name="ImageViewer" 
-        component={ImageViewerScreen} 
-        options={{ 
-          headerShown: true,
-          title: 'Image',
           headerBackTitle: 'Back'
         }} 
       />
