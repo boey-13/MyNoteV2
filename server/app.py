@@ -161,7 +161,7 @@ def init_db():
 @app.before_request
 def ensure_user():
     if request.path.startswith("/api/"):
-        if request.path == "/api/health" or request.path == "/api/users/register":
+        if request.path == "/api/health" or request.path == "/api/users/register" or request.path == "/api/sync-status":
             return
         uid = request.headers.get("X-User")
         if not uid or not uid.isdigit():
@@ -228,7 +228,7 @@ def upsert_note():
                 rr = c.fetchone()
                 conn.close()
                 # ← Push: user's devices receive "updated"
-                socketio.emit('note_updated', {'id': int(remote_id)}, to=f"user:{uid}")
+                socketio.emit('note_updated', {'id': int(remote_id), 'title': title, 'user_id': uid, 'version': rr["version"]}, to=f"user:{uid}")
                 
                 # Update sync status
                 update_sync_status("note_updates", {
@@ -250,7 +250,7 @@ def upsert_note():
     new_id = c.lastrowid
     conn.commit()
     conn.close()
-    socketio.emit('note_updated', {'id': int(new_id)}, to=f"user:{uid}")  # ← Also push for new notes
+    socketio.emit('note_created', {'id': int(new_id), 'title': title, 'user_id': uid}, to=f"user:{uid}")  # ← Send note_created for new notes
     
     # Update sync status
     update_sync_status("note_creations", {
@@ -268,7 +268,7 @@ def delete_note(rid: int):
     conn = db(); c = conn.cursor()
     c.execute("DELETE FROM notes WHERE id=? AND user_id=?", (rid, uid))
     conn.commit(); conn.close()
-    socketio.emit('note_deleted', {'id': int(rid)}, to=f"user:{uid}")  # ← Delete push
+    socketio.emit('note_deleted', {'id': int(rid), 'user_id': uid}, to=f"user:{uid}")  # ← Delete push
     
     # Update sync status
     update_sync_status("note_deletions", {
@@ -324,6 +324,111 @@ def register_user():
     })
     
     return jsonify({"id": user_id, "username": username, "email": email})
+
+# Folder Management API Endpoints
+@app.get("/api/folders")
+def list_folders():
+    """Get all folders for the current user"""
+    uid = int(request.headers.get("X-User", "0"))
+    
+    conn = db()
+    c = conn.cursor()
+    c.execute("SELECT id, name, created_at, updated_at FROM folders WHERE user_id = ? ORDER BY name", (uid,))
+    rows = c.fetchall()
+    conn.close()
+    
+    return jsonify({"items": rows})
+
+@app.post("/api/folders")
+def create_folder():
+    """Create a new folder"""
+    uid = int(request.headers.get("X-User", "0"))
+    data = request.get_json(force=True)
+    name = data.get("name", "").strip()
+    
+    if not name:
+        return jsonify({"error": {"code": "INVALID_INPUT", "message": "Folder name is required"}}), 400
+    
+    conn = db()
+    c = conn.cursor()
+    
+    # Check if folder name already exists for this user
+    c.execute("SELECT id FROM folders WHERE name = ? AND user_id = ?", (name, uid))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"error": {"code": "FOLDER_EXISTS", "message": "Folder name already exists"}}), 409
+    
+    # Create new folder
+    c.execute("INSERT INTO folders (user_id, name, created_at) VALUES (?, ?, ?)", 
+              (uid, name, now_iso()))
+    folder_id = c.lastrowid
+    conn.commit()
+    conn.close()
+    
+    # No WebSocket event for folders - notes contain folder_id
+    
+    return jsonify({"id": folder_id, "name": name, "created_at": now_iso()})
+
+@app.put("/api/folders/<int:folder_id>")
+def update_folder(folder_id: int):
+    """Update folder name"""
+    uid = int(request.headers.get("X-User", "0"))
+    data = request.get_json(force=True)
+    name = data.get("name", "").strip()
+    
+    if not name:
+        return jsonify({"error": {"code": "INVALID_INPUT", "message": "Folder name is required"}}), 400
+    
+    conn = db()
+    c = conn.cursor()
+    
+    # Check if folder exists and belongs to user
+    c.execute("SELECT id FROM folders WHERE id = ? AND user_id = ?", (folder_id, uid))
+    if not c.fetchone():
+        conn.close()
+        return jsonify({"error": {"code": "FOLDER_NOT_FOUND", "message": "Folder not found"}}), 404
+    
+    # Check if new name already exists for this user
+    c.execute("SELECT id FROM folders WHERE name = ? AND user_id = ? AND id != ?", (name, uid, folder_id))
+    if c.fetchone():
+        conn.close()
+        return jsonify({"error": {"code": "FOLDER_EXISTS", "message": "Folder name already exists"}}), 409
+    
+    # Update folder
+    c.execute("UPDATE folders SET name = ?, updated_at = ? WHERE id = ? AND user_id = ?", 
+              (name, now_iso(), folder_id, uid))
+    conn.commit()
+    conn.close()
+    
+    # No WebSocket event for folders - notes contain folder_id
+    
+    return jsonify({"id": folder_id, "name": name, "updated_at": now_iso()})
+
+@app.delete("/api/folders/<int:folder_id>")
+def delete_folder(folder_id: int):
+    """Delete a folder"""
+    uid = int(request.headers.get("X-User", "0"))
+    
+    conn = db()
+    c = conn.cursor()
+    
+    # Check if folder exists and belongs to user
+    c.execute("SELECT id FROM folders WHERE id = ? AND user_id = ?", (folder_id, uid))
+    if not c.fetchone():
+        conn.close()
+        return jsonify({"error": {"code": "FOLDER_NOT_FOUND", "message": "Folder not found"}}), 404
+    
+    # Move notes to default folder (NULL)
+    c.execute("UPDATE notes SET folder_id = NULL WHERE folder_id = ? AND user_id = ?", (folder_id, uid))
+    
+    # Delete folder
+    c.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, uid))
+    conn.commit()
+    conn.close()
+    
+    # No WebSocket event for folders - notes contain folder_id
+    
+    return jsonify({"success": True})
 
 # Socket.IO connection: join room by user
 @socketio.on('connect')
