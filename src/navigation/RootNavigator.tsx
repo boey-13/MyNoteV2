@@ -242,7 +242,7 @@ function CustomDrawerContent(
               <TouchableOpacity 
                 style={styles.actionItem}
                 onPress={() => {
-                  rest.navigation.navigate('EditNote');
+                  rest.navigation.navigate('MainApp', { screen: 'EditNote' });
                   rest.navigation.closeDrawer();
                 }}
               >
