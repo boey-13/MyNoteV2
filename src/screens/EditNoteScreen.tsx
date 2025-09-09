@@ -5,6 +5,8 @@ import {
   Keyboard, InteractionManager, TextInput, StyleSheet, Dimensions,
   TouchableOpacity
 } from 'react-native';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 import { useAppTheme } from '../theme/ThemeProvider';
 import InputWithLabel from '../components/InputWithLabel';
 import CustomButton from '../components/CustomButton';
@@ -93,21 +95,20 @@ export default function EditNoteScreen({ route, navigation }: any) {
 
   function isEditorContentEmpty(html?: string): boolean {
     if (!html) return true;
-    // 有媒体就算"有内容"
+
     if (/<(img|video|audio|iframe)\b/i.test(html)) return false;
-    // 去标签后的纯文本是否为空
+
     const text = html.replace(/<[^>]*>/g, '').replace(/\s+/g, '');
     return text.length === 0;
   }
 
   function hasMeaningfulChanges(): boolean {
-    // 只有在dirty状态下才检查是否有实际内容
+
     if (!dirty) {
       console.log('hasMeaningfulChanges: not dirty, returning false');
       return false;
     }
     
-    // 检查是否有实际内容
     const hasTitle = title.trim().length > 0;
     const hasContent = !isEditorContentEmpty(content);
     const hasImages = draftImages.length > 0;
@@ -241,7 +242,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
       console.log('beforeRemove triggered, bypassGuardRef.current =', bypassGuardRef.current);
       if (bypassGuardRef.current) return;
       
-      // 用"是否有实际变更"来判断要不要拦截（见 B 部分）
+
       const hasChanges = hasMeaningfulChanges();
       console.log('beforeRemove: hasMeaningfulChanges =', hasChanges);
       
@@ -318,8 +319,8 @@ export default function EditNoteScreen({ route, navigation }: any) {
   useEffect(() => {
     if (!dirty) return;
     if (!hasMeaningfulChanges()) {
-      // 没有实际内容就不要落空草稿；如果之前有草稿可以选择清理
-      // await clearDraft(editingId ?? 'new'); // 如需立即清草稿可放开
+
+
       return;
     }
     if (draftTimerRef.current) clearTimeout(draftTimerRef.current);
@@ -369,16 +370,20 @@ export default function EditNoteScreen({ route, navigation }: any) {
   }
 
   function onCancel() {
-    console.log('onCancel called, checking hasMeaningfulChanges...');
-    const hasChanges = hasMeaningfulChanges();
-    console.log('onCancel: hasMeaningfulChanges =', hasChanges);
+    console.log('onCancel called, checking if there is any content...');
+    const hasTitle = title.trim().length > 0;
+    const hasContent = !isEditorContentEmpty(content);
+    const hasImages = draftImages.length > 0;
+    const hasAnyContent = hasTitle || hasContent || hasImages;
     
-    if (!hasChanges) {
-      console.log('onCancel: no meaningful changes, going back directly');
+    console.log('onCancel: hasTitle =', hasTitle, 'hasContent =', hasContent, 'hasImages =', hasImages, 'hasAnyContent =', hasAnyContent);
+    
+    if (!hasAnyContent) {
+      console.log('onCancel: no content, going back directly');
       bypassGuardRef.current = true;
       return releaseFocusThen(() => navigation.goBack());
     }
-    console.log('onCancel: has meaningful changes, showing confirm dialog');
+    console.log('onCancel: has content, showing confirm dialog');
     setConfirmDiscard(true);
   }
   // Add images to draft
@@ -448,8 +453,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
                 value={title}
                 onChangeText={(t) => {
                   setTitle(t);
-                  // 去掉无意义空白抖动
-                  // 只有从空→非空或内容确实不同才算脏
                   if (t.trim() !== title.trim()) setDirty(true);
                 }}
                 placeholder="Enter a title"
@@ -564,9 +567,12 @@ export default function EditNoteScreen({ route, navigation }: any) {
                       onPress={insertWeatherToNote}
                       style={styles.addWeatherButton}
                     >
-                      <Text style={styles.addWeatherButtonText}>
-                        📝 Add Weather to Note
-                      </Text>
+                      <View style={styles.addWeatherButtonContent}>
+                        <Icon name="file-text" size={16} color="#455B96" style={styles.addWeatherIcon} />
+                        <Text style={styles.addWeatherButtonText}>
+                          Add Weather to Note
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   )}
                 </View>
@@ -602,7 +608,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
                     const nowEmpty = isEditorContentEmpty(normalized);
                     setContent(normalized);
                     if (!programmaticSetRef.current) {
-                      // 空→空 的变化（多半是样式标签）不算脏
                       if (!(wasEmpty && nowEmpty)) setDirty(true);
                     }
                   }}
@@ -876,6 +881,13 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  addWeatherButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  addWeatherIcon: {
+    marginRight: 8,
   },
   addWeatherButtonText: {
     color: 'white',

@@ -10,6 +10,8 @@ import {
   Alert,
   TextInput,
 } from 'react-native';
+// @ts-ignore
+import Icon from 'react-native-vector-icons/Feather';
 import { getCurrentWeather, getWeatherIconUrl, formatWeatherData, WeatherData } from '../utils/weatherApi';
 import { showToast } from './Toast';
 
@@ -172,7 +174,14 @@ export default function WeatherWidget({ city = 'London', onWeatherData, onCityCh
                 source={{ uri: getWeatherIconUrl(weather.icon) }}
                 style={styles.weatherIcon}
                 resizeMode="contain"
+                onError={() => {
+                  console.log('Weather icon failed to load:', getWeatherIconUrl(weather.icon));
+                }}
               />
+              {/* Fallback icon if image fails to load */}
+              <View style={styles.fallbackIcon}>
+                <Icon name="sun" size={30} color="#FFA500" />
+              </View>
             </View>
           </View>
         </TouchableOpacity>
@@ -297,10 +306,20 @@ const styles = StyleSheet.create({
     height: 50,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   weatherIcon: {
     width: 50,
     height: 50,
+    position: 'absolute',
+  },
+  fallbackIcon: {
+    width: 50,
+    height: 50,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#FFF5E6',
+    borderRadius: 25,
   },
   loadingText: {
     marginLeft: 8,
