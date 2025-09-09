@@ -1,7 +1,7 @@
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room
-import sqlite3, os, datetime
+import sqlite3, os, datetime, json
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "mynote_sync.db")
 
@@ -11,6 +11,98 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # ← Added
 
 def now_iso():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
+
+def update_sync_status(operation_type, data=None):
+    """Update sync_status.json with real-time data"""
+    try:
+        sync_file = os.path.join(os.path.dirname(__file__), "sync_status.json")
+        
+        # Load existing data
+        if os.path.exists(sync_file):
+            with open(sync_file, 'r') as f:
+                sync_data = json.load(f)
+        else:
+            sync_data = {
+                "sync_status": {
+                    "last_updated": now_iso(),
+                    "status": "active",
+                    "total_users": 0,
+                    "total_notes": 0,
+                    "pending_sync_operations": 0,
+                    "websocket_connections": 0,
+                    "last_sync_operation": None
+                },
+                "users": [],
+                "notes": [],
+                "recent_operations": []
+            }
+        
+        # Update sync status
+        sync_data["sync_status"]["last_updated"] = now_iso()
+        sync_data["sync_status"]["last_sync_operation"] = operation_type
+        
+        # Add to recent operations (keep last 10 for cleaner view)
+        operation = {
+            "type": operation_type,
+            "timestamp": now_iso(),
+            "data": data
+        }
+        sync_data["recent_operations"].insert(0, operation)
+        sync_data["recent_operations"] = sync_data["recent_operations"][:10]
+        
+        # Get all users data
+        conn = db()
+        cursor = conn.cursor()
+        
+        # Get all users
+        cursor.execute("SELECT id, username, email, password FROM users ORDER BY id")
+        users = []
+        for row in cursor.fetchall():
+            users.append({
+                "id": row[0],
+                "username": row[1],
+                "email": row[2],
+                "password": "***"  # Hide password for security
+            })
+        sync_data["users"] = users
+        
+        # Get all notes with detailed info
+        cursor.execute("""
+            SELECT id, user_id, title, content, folder_id, is_favorite, is_deleted, updated_at, version, remote_id, dirty
+            FROM notes 
+            ORDER BY updated_at DESC
+        """)
+        notes = []
+        for row in cursor.fetchall():
+            notes.append({
+                "id": row[0],
+                "user_id": row[1],
+                "title": row[2] or "",
+                "content": (row[3] or "")[:100] + "..." if row[3] and len(row[3]) > 100 else (row[3] or ""),
+                "folder_id": row[4],
+                "is_favorite": bool(row[5]),
+                "is_deleted": bool(row[6]),
+                "updated_at": row[7],
+                "version": row[8],
+                "server_id": row[0],  # Show server ID instead of remote_id
+                "client_remote_id": row[9],  # Show what client sent
+                "dirty": bool(row[10])
+            })
+        sync_data["notes"] = notes
+        
+        # Update totals
+        sync_data["sync_status"]["total_users"] = len(users)
+        sync_data["sync_status"]["total_notes"] = len(notes)
+        sync_data["sync_status"]["pending_sync_operations"] = sum(1 for note in notes if note["dirty"])
+        
+        conn.close()
+        
+        # Save updated data
+        with open(sync_file, 'w') as f:
+            json.dump(sync_data, f, indent=2)
+            
+    except Exception as e:
+        print(f"Error updating sync status: {e}")
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -79,6 +171,19 @@ def ensure_user():
 def health():
     return jsonify({"ok": True, "time": now_iso()})
 
+@app.get("/api/sync-status")
+def get_sync_status():
+    """Get real-time sync status JSON"""
+    try:
+        sync_file = os.path.join(os.path.dirname(__file__), "sync_status.json")
+        if os.path.exists(sync_file):
+            with open(sync_file, 'r') as f:
+                return json.load(f)
+        else:
+            return jsonify({"error": "Sync status file not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
 @app.get("/api/notes")
 def list_notes():
     uid = int(request.headers.get("X-User", "0"))
@@ -124,6 +229,15 @@ def upsert_note():
                 conn.close()
                 # ← Push: user's devices receive "updated"
                 socketio.emit('note_updated', {'id': int(remote_id)}, to=f"user:{uid}")
+                
+                # Update sync status
+                update_sync_status("note_updates", {
+                    "note_id": int(remote_id),
+                    "user_id": uid,
+                    "title": title,
+                    "version": rr["version"]
+                })
+                
                 return jsonify({"id": remote_id, "version": rr["version"], "updated_at": rr["updated_at"]})
             else:
                 conn.close()
@@ -137,6 +251,15 @@ def upsert_note():
     conn.commit()
     conn.close()
     socketio.emit('note_updated', {'id': int(new_id)}, to=f"user:{uid}")  # ← Also push for new notes
+    
+    # Update sync status
+    update_sync_status("note_creations", {
+        "note_id": int(new_id),
+        "user_id": uid,
+        "title": title,
+        "version": version
+    })
+    
     return jsonify({"id": new_id, "version": version, "updated_at": updated_at})
 
 @app.delete("/api/notes/<int:rid>")
@@ -146,6 +269,13 @@ def delete_note(rid: int):
     c.execute("DELETE FROM notes WHERE id=? AND user_id=?", (rid, uid))
     conn.commit(); conn.close()
     socketio.emit('note_deleted', {'id': int(rid)}, to=f"user:{uid}")  # ← Delete push
+    
+    # Update sync status
+    update_sync_status("note_deletions", {
+        "note_id": int(rid),
+        "user_id": uid
+    })
+    
     return jsonify({"ok": True}), 200
 
 @app.post("/api/users/register")
@@ -185,6 +315,13 @@ def register_user():
     user_id = c.lastrowid
     conn.commit()
     conn.close()
+    
+    # Update sync status
+    update_sync_status("user_registrations", {
+        "user_id": user_id,
+        "username": username,
+        "email": email
+    })
     
     return jsonify({"id": user_id, "username": username, "email": email})
 
