@@ -40,13 +40,25 @@ A modern, feature-rich note-taking application built with React Native, featurin
 - Xcode (for iOS development, macOS only)
 - Git
 
-### 1. Clone the Repository
+### 1. Prerequisites Check
+```bash
+# Check Node.js version (requires 16+)
+node --version
+
+# Check Python version (requires 3.8+)
+python --version
+
+# Check Android SDK and ADB
+adb --version
+```
+
+### 2. Clone the Repository
 ```bash
 git clone <your-repository-url>
 cd MyNoteV2
 ```
 
-### 2. Install Dependencies
+### 3. Install Dependencies
 
 #### Frontend Dependencies
 ```bash
@@ -65,16 +77,22 @@ python -m venv .venv
 source .venv/bin/activate
 
 # Install Python dependencies
-pip install flask flask-socketio sqlite3
+pip install -r requirements.txt
 ```
 
-### 3. Verify Setup (Optional but Recommended)
+### 4. Verify Setup (Optional but Recommended)
 ```bash
 # Check if everything is configured correctly
 python check_setup.py
 ```
 
-### 4. Configure API Keys
+**Expected output:**
+- ✅ Node.js version check
+- ✅ Python version check  
+- ✅ Database files found
+- ✅ All dependencies installed
+
+### 5. Configure API Keys
 
 #### OpenWeatherMap API (Required for weather features)
 1. Visit [OpenWeatherMap](https://openweathermap.org/api)
@@ -86,14 +104,14 @@ cp src/config/apiKeys.example.ts src/config/apiKeys.ts
 # Then edit src/config/apiKeys.ts with your actual API key
 ```
 
-### 5. Database Setup
+### 6. Database Setup
 
 #### Run Database Migration (if needed)
 ```bash
 python migrate_database.py
 ```
 
-### 6. Start the Application
+### 7. Start the Application
 
 #### Option A: Use Batch Scripts (Windows)
 ```bash
