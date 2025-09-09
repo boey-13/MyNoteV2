@@ -77,6 +77,10 @@ export default function RecycleBinScreen() {
   // Double-confirm for Empty Bin
   // 0 = hidden, 1 = first confirm, 2 = final confirm
   const [confirmEmptyStep, setConfirmEmptyStep] = useState<0 | 1 | 2>(0);
+  
+  // Confirmation dialogs for restore and delete
+  const [confirmRestore, setConfirmRestore] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   const load = useCallback(async () => {
     setRefreshing(true);
@@ -118,11 +122,16 @@ export default function RecycleBinScreen() {
 
   async function onRestoreSelected() {
     if (selected.size === 0) return;
+    setConfirmRestore(true);
+  }
+
+  async function confirmRestoreAction() {
     try {
       await restoreNotes(Array.from(selected));
       showToast.success('Restored');
       setSelected(new Set());
       setSelectMode(false);
+      setConfirmRestore(false);
       await load();
     } catch (e: any) {
       showToast.error(e?.message ?? 'Restore failed');
@@ -131,6 +140,10 @@ export default function RecycleBinScreen() {
 
   async function onDeleteSelected() {
     if (selected.size === 0) return;
+    setConfirmDelete(true);
+  }
+
+  async function confirmDeleteAction() {
     try {
       console.log('Attempting to delete notes:', Array.from(selected));
       await deleteNotesPermanent(Array.from(selected));
@@ -138,6 +151,7 @@ export default function RecycleBinScreen() {
       showToast.success('Deleted');
       setSelected(new Set());
       setSelectMode(false);
+      setConfirmDelete(false);
       await load();
     } catch (e: any) {
       console.error('Delete operation failed:', e);
@@ -288,6 +302,29 @@ export default function RecycleBinScreen() {
         confirmLabel="Delete All"
         onCancel={() => setConfirmEmptyStep(0)}
         onConfirm={async () => { setConfirmEmptyStep(0); await onEmptyBin(); }}
+      />
+
+      {/* Confirmation dialog for Restore */}
+      <ConfirmDialog
+        visible={confirmRestore}
+        title="Restore Selected Notes?"
+        message={`Are you sure you want to restore ${selectedCount} note${selectedCount !== 1 ? 's' : ''}?`}
+        cancelLabel="Cancel"
+        confirmLabel="Restore"
+        onCancel={() => setConfirmRestore(false)}
+        onConfirm={confirmRestoreAction}
+      />
+
+      {/* Confirmation dialog for Delete */}
+      <ConfirmDialog
+        visible={confirmDelete}
+        danger
+        title="Permanently Delete Selected Notes?"
+        message={`Are you sure you want to permanently delete ${selectedCount} note${selectedCount !== 1 ? 's' : ''}? This action cannot be undone.`}
+        cancelLabel="Cancel"
+        confirmLabel="Delete"
+        onCancel={() => setConfirmDelete(false)}
+        onConfirm={confirmDeleteAction}
       />
     </View>
   );
