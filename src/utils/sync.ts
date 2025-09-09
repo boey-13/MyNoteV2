@@ -4,10 +4,12 @@ import { listQueue, removeQueueItem, bumpQueueAttempt } from '../db/syncQueue';
 import { getJson, postJson, del } from './api';
 import { showToast } from '../components/Toast';
 import { getCurrentUserId } from './session';
+import { getItem } from './storage';
 
 const LAST_KEY = (uid: number) => `sync.last.${uid}`;
 
 let SYNC_IN_FLIGHT = false;
+let AUTO_SYNC_INTERVAL: NodeJS.Timeout | null = null;
 
 async function pushDeleteQueue(uid: number) {
   const items = await listQueue(uid, 50);
@@ -49,7 +51,7 @@ async function pushDirty(uid: number): Promise<number> {
               db.transaction(txx => {
                 txx.executeSql(
                   `UPDATE notes SET dirty=0, remote_id=?, version=?, updated_at=? WHERE id=?`,
-                  [String(res.id ?? n.remote_id ?? ''), res.version ?? n.version, res.updated_at ?? n.updated_at, n.id],
+                  [res.id ? String(res.id) : n.remote_id, res.version ?? n.version, res.updated_at ?? n.updated_at, n.id],
                   () => resv(),
                   () => { rej(new Error("update failed")); return false; }
                 );
@@ -174,4 +176,64 @@ export async function runFullSync(showToastUi = true): Promise<{pushed: number; 
     SYNC_IN_FLIGHT = false;
   }
   return result;
+}
+
+// Auto sync functions
+export async function isAutoSyncEnabled(): Promise<boolean> {
+  try {
+    const enabled = await getItem('autoSyncEnabled');
+    return enabled === 'true';
+  } catch (error) {
+    console.log('Error checking auto sync setting:', error);
+    return false;
+  }
+}
+
+export async function startAutoSync(): Promise<void> {
+  // Clear any existing interval
+  if (AUTO_SYNC_INTERVAL) {
+    clearInterval(AUTO_SYNC_INTERVAL);
+  }
+
+  // Check if auto sync is enabled
+  const enabled = await isAutoSyncEnabled();
+  if (!enabled) {
+    return;
+  }
+
+  // Start auto sync every 5 seconds
+  AUTO_SYNC_INTERVAL = setInterval(async () => {
+    try {
+      const stillEnabled = await isAutoSyncEnabled();
+      if (!stillEnabled) {
+        stopAutoSync();
+        return;
+      }
+
+      // Only sync if not already syncing
+      if (!SYNC_IN_FLIGHT) {
+        await runFullSync(false); // Don't show toast for auto sync
+      }
+    } catch (error) {
+      console.log('Auto sync error:', error);
+    }
+  }, 5000); // 5 seconds
+
+  console.log('Auto sync started');
+}
+
+export function stopAutoSync(): void {
+  if (AUTO_SYNC_INTERVAL) {
+    clearInterval(AUTO_SYNC_INTERVAL);
+    AUTO_SYNC_INTERVAL = null;
+    console.log('Auto sync stopped');
+  }
+}
+
+// Initialize auto sync on app start
+export async function initializeAutoSync(): Promise<void> {
+  const enabled = await isAutoSyncEnabled();
+  if (enabled) {
+    await startAutoSync();
+  }
 }

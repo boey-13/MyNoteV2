@@ -20,7 +20,7 @@ import {
   toImageUri, rewriteDraftImageSrc,
 } from '../utils/attachments';
 import { listAssets, NoteAsset } from '../db/assets';
-import { listFolders, getOrCreateFolderByName } from '../db/folders';
+import { listFolders, getOrCreateFolderByName, updateFolder, deleteFolder } from '../db/folders';
 import ImageGrid from '../components/ImageGrid';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
@@ -55,6 +55,9 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const [folderId, setFolderId] = useState<FolderOpt['value']>('NULL');
   const [showAddFolder, setShowAddFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState('');
+  const [showManageFolders, setShowManageFolders] = useState(false);
+  const [editingFolder, setEditingFolder] = useState<{ id: number; name: string } | null>(null);
+  const [editFolderName, setEditFolderName] = useState('');
 
   // attachments state
   const [existingAssets, setExistingAssets] = useState<NoteAsset[]>([]);
@@ -155,7 +158,7 @@ export default function EditNoteScreen({ route, navigation }: any) {
   }
 
   // Load folders for picker
-  async function loadFolderOptions(selected?: number | null) {
+  async function loadFolderOptions(selected?: number | null | string) {
     const rows = await listFolders();
     const opts: FolderOpt[] = [
       { label: 'No folder', value: 'NULL' },
@@ -163,7 +166,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
       { label: '+ Add Folder', value: 'ADD_FOLDER' }
     ];
     setFolderOpts(opts);
-    setFolderId(selected == null ? 'NULL' : (selected as number));
+    if (selected === 'NULL' || selected === 'ADD_FOLDER') {
+      setFolderId(selected);
+    } else {
+      setFolderId(selected == null ? 'NULL' : (selected as number));
+    }
   }
 
   // Handle folder picker change
@@ -190,6 +197,40 @@ export default function EditNoteScreen({ route, navigation }: any) {
       showToast.success(`Folder "${folder.name}" created`);
     } catch (error) {
       showToast.error('Failed to create folder', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  // Start editing folder
+  function startEditFolder(folder: { id: number; name: string }) {
+    setEditingFolder(folder);
+    setEditFolderName(folder.name);
+  }
+
+  // Save folder edit
+  async function handleSaveFolderEdit() {
+    if (!editingFolder || !editFolderName.trim()) return;
+    
+    try {
+      await updateFolder(editingFolder.id, editFolderName.trim());
+      await loadFolderOptions(folderId);
+      setEditingFolder(null);
+      setEditFolderName('');
+      showToast.success(`Folder renamed to "${editFolderName.trim()}"`);
+    } catch (error) {
+      showToast.error('Failed to rename folder', error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  // Delete folder
+  async function handleDeleteFolder(folderIdToDelete: number, folderName: string) {
+    try {
+      await deleteFolder(folderIdToDelete);
+      await loadFolderOptions('NULL');
+      setFolderId('NULL');
+      setDirty(true);
+      showToast.success(`Folder "${folderName}" deleted`);
+    } catch (error) {
+      showToast.error('Failed to delete folder', error instanceof Error ? error.message : String(error));
     }
   }
 
@@ -464,7 +505,16 @@ export default function EditNoteScreen({ route, navigation }: any) {
 
           {/* Folder Picker */}
           <View style={styles.section}>
-            <Text style={styles.label}>Folder</Text>
+            <View style={styles.folderHeader}>
+              <Text style={styles.label}>Folder</Text>
+              <TouchableOpacity 
+                style={styles.manageFoldersButton}
+                onPress={() => setShowManageFolders(true)}
+              >
+                <Icon name="settings" size={16} color="#455B96" />
+                <Text style={styles.manageFoldersText}>Manage</Text>
+              </TouchableOpacity>
+            </View>
             <View style={styles.pickerContainer}>
               <Picker
                 selectedValue={folderId}
@@ -509,6 +559,89 @@ export default function EditNoteScreen({ route, navigation }: any) {
                   disabled={!newFolderName.trim()}
                 />
               </View>
+            </View>
+          )}
+
+          {/* Manage Folders Dialog */}
+          {showManageFolders && (
+            <View style={styles.manageFoldersContainer}>
+              <Text style={styles.manageFoldersTitle}>Manage Folders</Text>
+              
+              {/* Folder List */}
+              <ScrollView style={styles.folderList} showsVerticalScrollIndicator={false}>
+                {folderOpts.filter(opt => opt.value !== 'NULL' && opt.value !== 'ADD_FOLDER').map(opt => (
+                  <View key={opt.value} style={styles.folderItem}>
+                    {editingFolder?.id === opt.value ? (
+                      <View style={styles.folderEditContainer}>
+                        <TextInput
+                          style={styles.folderEditInput}
+                          value={editFolderName}
+                          onChangeText={setEditFolderName}
+                          placeholder="Folder name"
+                          placeholderTextColor="#999"
+                          autoFocus
+                        />
+                        <View style={styles.folderEditButtons}>
+                          <TouchableOpacity
+                            style={styles.folderEditButton}
+                            onPress={() => {
+                              setEditingFolder(null);
+                              setEditFolderName('');
+                            }}
+                          >
+                            <Icon name="x" size={16} color="#666" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.folderEditButton}
+                            onPress={handleSaveFolderEdit}
+                            disabled={!editFolderName.trim()}
+                          >
+                            <Icon name="check" size={16} color={editFolderName.trim() ? "#455B96" : "#ccc"} />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.folderItemContent}>
+                        <Text style={styles.folderItemName}>{opt.label}</Text>
+                        <View style={styles.folderItemActions}>
+                          <TouchableOpacity
+                            style={styles.folderActionButton}
+                            onPress={() => startEditFolder({ id: opt.value as number, name: opt.label })}
+                          >
+                            <Icon name="edit-3" size={16} color="#455B96" />
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={styles.folderActionButton}
+                            onPress={() => handleDeleteFolder(opt.value as number, opt.label)}
+                          >
+                            <Icon name="trash-2" size={16} color="#E74C3C" />
+                          </TouchableOpacity>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                ))}
+              </ScrollView>
+
+              {/* Add New Folder Button */}
+              <TouchableOpacity
+                style={styles.addNewFolderButton}
+                onPress={() => {
+                  setShowManageFolders(false);
+                  setShowAddFolder(true);
+                }}
+              >
+                <Icon name="plus" size={16} color="#455B96" />
+                <Text style={styles.addNewFolderText}>Add New Folder</Text>
+              </TouchableOpacity>
+
+              {/* Close Button */}
+              <CustomButton
+                label="Close"
+                onPress={() => setShowManageFolders(false)}
+                variant="outline"
+                style={styles.closeManageButton}
+              />
             </View>
           )}
 
@@ -894,5 +1027,129 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '600',
     fontFamily: 'Poppins-SemiBold',
+  },
+  // Folder management styles
+  folderHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  manageFoldersButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  manageFoldersText: {
+    marginLeft: 4,
+    fontSize: 12,
+    color: '#455B96',
+    fontWeight: '500',
+  },
+  manageFoldersContainer: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 16,
+    marginTop: 16,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    maxHeight: 400,
+  },
+  manageFoldersTitle: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#2C3E50',
+    marginBottom: 16,
+  },
+  folderList: {
+    maxHeight: 200,
+    marginBottom: 16,
+  },
+  folderItem: {
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  folderItemContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 12,
+  },
+  folderItemName: {
+    fontSize: 14,
+    color: '#2C3E50',
+    fontWeight: '500',
+    flex: 1,
+  },
+  folderItemActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  folderActionButton: {
+    padding: 8,
+    marginLeft: 4,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  folderEditContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 12,
+  },
+  folderEditInput: {
+    flex: 1,
+    fontSize: 14,
+    color: '#2C3E50',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: '#455B96',
+    paddingHorizontal: 8,
+    paddingVertical: 6,
+    marginRight: 8,
+  },
+  folderEditButtons: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  folderEditButton: {
+    padding: 8,
+    marginLeft: 4,
+    borderRadius: 4,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+  },
+  addNewFolderButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    backgroundColor: '#F8F9FA',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    borderStyle: 'dashed',
+    marginBottom: 16,
+  },
+  addNewFolderText: {
+    marginLeft: 8,
+    fontSize: 14,
+    color: '#455B96',
+    fontWeight: '500',
+  },
+  closeManageButton: {
+    width: '100%',
   },
 });

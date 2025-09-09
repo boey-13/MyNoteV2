@@ -1,9 +1,9 @@
 // src/screens/SettingsScreen.tsx
 import React, { useState, useEffect } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, Switch } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import CustomButton from '../components/CustomButton';
-import { runFullSync } from '../utils/sync';
+import { runFullSync, startAutoSync, stopAutoSync } from '../utils/sync';
 import { getJson } from '../utils/api';
 import { showToast } from '../components/Toast';
 import { countDirtyNotes, listDirtyNotes } from '../db/notes';
@@ -11,17 +11,51 @@ import { countDeleteQueue } from '../db/syncQueue';
 import { checkDatabaseSchema, forceCreateSyncQueue } from '../utils/checkDatabase';
 import { getCurrentUserId } from '../utils/session';
 import { getConnectionStatus, addConnectionListener } from '../utils/realtimeStatus';
+import { getItem, setItem } from '../utils/storage';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
 
 export default function SettingsScreen({ navigation }: any) {
   const { theme } = useAppTheme();
   const [isRealtimeConnected, setIsRealtimeConnected] = useState(getConnectionStatus());
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(false);
 
   useEffect(() => {
     const unsubscribe = addConnectionListener(setIsRealtimeConnected);
     return unsubscribe;
   }, []);
+
+  // Load auto sync setting on component mount
+  useEffect(() => {
+    loadAutoSyncSetting();
+  }, []);
+
+  const loadAutoSyncSetting = async () => {
+    try {
+      const enabled = await getItem('autoSyncEnabled');
+      setAutoSyncEnabled(enabled === 'true');
+    } catch (error) {
+      console.log('Error loading auto sync setting:', error);
+    }
+  };
+
+  const toggleAutoSync = async (value: boolean) => {
+    try {
+      await setItem('autoSyncEnabled', value.toString());
+      setAutoSyncEnabled(value);
+      
+      if (value) {
+        await startAutoSync();
+        showToast.success('Auto sync enabled - changes will sync every 5 seconds');
+      } else {
+        stopAutoSync();
+        showToast.success('Auto sync disabled - manual sync only');
+      }
+    } catch (error) {
+      console.log('Error saving auto sync setting:', error);
+      showToast.error('Failed to save setting');
+    }
+  };
 
   const checkHealth = async () => {
     try {
@@ -145,6 +179,24 @@ export default function SettingsScreen({ navigation }: any) {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Sync & Data</Text>
           <View style={styles.actionsCard}>
+            {/* Auto Sync Toggle */}
+            <View style={styles.actionItem}>
+              <Icon name="zap" size={20} color="#455B96" style={styles.actionIcon} />
+              <View style={styles.actionInfo}>
+                <Text style={styles.actionTitle}>Auto Sync</Text>
+                <Text style={styles.actionDescription}>
+                  {autoSyncEnabled ? 'Automatically sync changes' : 'Manual sync only'}
+                </Text>
+              </View>
+              <Switch
+                value={autoSyncEnabled}
+                onValueChange={toggleAutoSync}
+                trackColor={{ false: '#E0E0E0', true: '#455B96' }}
+                thumbColor={autoSyncEnabled ? '#FFFFFF' : '#FFFFFF'}
+                ios_backgroundColor="#E0E0E0"
+              />
+            </View>
+
             <TouchableOpacity style={styles.actionItem} onPress={handleSyncNow}>
               <Icon name="refresh-cw" size={20} color="#455B96" style={styles.actionIcon} />
               <View style={styles.actionInfo}>
@@ -161,7 +213,7 @@ export default function SettingsScreen({ navigation }: any) {
               </View>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.actionItem} onPress={printDirtyList}>
+            <TouchableOpacity style={styles.actionItemNoBorder} onPress={printDirtyList}>
               <Icon name="file-text" size={20} color="#455B96" style={styles.actionIcon} />
               <View style={styles.actionInfo}>
                 <Text style={styles.actionTitle}>Print Dirty List</Text>
@@ -269,6 +321,11 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderBottomWidth: 1,
     borderBottomColor: '#E9ECEF',
+  },
+  actionItemNoBorder: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
   },
   actionIcon: {
     marginRight: 15,

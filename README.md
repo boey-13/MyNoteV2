@@ -160,6 +160,38 @@ npm run ios
 2. Select your device/simulator
 3. Click Run
 
+## 🔄 Real-time Sync Monitoring
+
+### Sync Status JSON
+The application automatically generates a real-time sync status file at `server/sync_status.json` that tracks:
+- User registrations
+- Note creations, updates, and deletions
+- Database statistics
+- Recent operations history
+- WebSocket connections
+
+### View Sync Status
+```bash
+# Via API endpoint
+curl http://localhost:5000/api/sync-status
+
+# Or view the JSON file directly
+cat server/sync_status.json
+```
+
+### Test Sync Functionality
+```bash
+# Run the sync demo script
+cd server
+python test_sync_demo.py
+```
+
+This will:
+1. Register a test user
+2. Create and update notes
+3. Show real-time sync statistics
+4. Display the sync status JSON file location
+
 ## 🔧 Configuration
 
 ### Environment Variables

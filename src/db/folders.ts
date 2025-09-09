@@ -55,3 +55,9 @@ export async function deleteFolder(id: number): Promise<void> {
   // Do NOT cascade delete notes; FK is SET NULL by design.
   await db.executeSql('DELETE FROM folders WHERE id = ? AND user_id = ?;', [id, uid]);
 }
+
+export async function updateFolder(id: number, name: string): Promise<void> {
+  const uid = await currentUserIdOrThrow();
+  const db = await getDB();
+  await db.executeSql('UPDATE folders SET name = ? WHERE id = ? AND user_id = ?;', [name, id, uid]);
+}
