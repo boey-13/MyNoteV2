@@ -2,13 +2,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Keyboard, KeyboardAvoidingView, Platform, Pressable, ScrollView, Text, TextInput, View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
-import NoteCard from '../components/NoteCard';
 import { listNotes, searchNotes, SearchOptions, SearchSort } from '../db/notes';
 import { getRecentSearches, addRecentSearch, clearRecentSearches } from '../utils/storage';
 import { showToast } from '../components/Toast';
 import { Picker } from '@react-native-picker/picker';
 import { listFolders } from '../db/folders';
-import RenderHtml from 'react-native-render-html';
 import { startRealtime, stopRealtime } from '../utils/realtime';
 import io from 'socket.io-client';
 import { getCurrentUserId } from '../utils/session';

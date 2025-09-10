@@ -5,7 +5,6 @@ import { useAppTheme } from '../theme/ThemeProvider';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
 import { listFavorites, listNotes, listNotesByFolder, softDeleteNote } from '../db/notes';
-import NoteCard from '../components/NoteCard';
 import CustomButton from '../components/CustomButton';
 import { showToast } from '../components/Toast';
 import { exportAllToJson } from '../utils/exporter';

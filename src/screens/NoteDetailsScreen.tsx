@@ -5,7 +5,6 @@ import { useAppTheme } from '../theme/ThemeProvider';
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
 import { getNote, softDeleteNote, toggleFavorite } from '../db/notes';
-import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { showToast } from '../components/Toast';
 import { useFocusEffect } from '@react-navigation/native';
@@ -104,7 +103,6 @@ export default function NoteDetailsScreen({ route, navigation }: any) {
               size={24} 
               color={note.is_favorite ? "#FFD700" : "#CCCCCC"} 
               style={styles.actionButtonIcon}
-              solid={note.is_favorite}
             />
           </TouchableOpacity>
         </View>

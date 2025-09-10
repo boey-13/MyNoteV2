@@ -8,7 +8,6 @@ import {
 // @ts-ignore
 import Icon from 'react-native-vector-icons/Feather';
 import { useAppTheme } from '../theme/ThemeProvider';
-import InputWithLabel from '../components/InputWithLabel';
 import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { createNote, getNote, updateNote, setNoteFolder } from '../db/notes';
@@ -21,7 +20,6 @@ import {
 } from '../utils/attachments';
 import { listAssets, NoteAsset } from '../db/assets';
 import { listFolders, getOrCreateFolderByName, updateFolder, deleteFolder } from '../db/folders';
-import ImageGrid from '../components/ImageGrid';
 import { RichEditor, RichToolbar, actions } from 'react-native-pell-rich-editor';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import { Picker } from '@react-native-picker/picker';
@@ -483,9 +481,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
     }
   }
 
-  const gridItems = isEditing
-    ? existingAssets.map(a => ({ id: a.id, uri: toImageUri(a.path) }))
-    : draftImages.map((p, idx) => ({ id: -idx - 1, uri: toImageUri(p) }));
 
   return (
     <View style={styles.container}>
@@ -784,21 +779,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
           </View>
 
           {/* Image Grid */}
-          {gridItems.length > 0 && (
-            <View style={styles.section}>
-              <Text style={styles.label}>Attachments</Text>
-              <ImageGrid
-                items={gridItems}
-                onLongPress={(id) => {
-                  if (!isEditing) {
-                    const idx = -id - 1;
-                    const rel = draftImages[idx];
-                    setConfirmRemoveDraftImg(rel);
-                  }
-                }}
-              />
-            </View>
-          )}
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>

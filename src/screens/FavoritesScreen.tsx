@@ -3,7 +3,6 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { RefreshControl, ScrollView, Text, View, StyleSheet, Dimensions, TouchableOpacity } from 'react-native';
 import { useAppTheme } from '../theme/ThemeProvider';
 import { listFavorites } from '../db/notes';
-import NoteCard from '../components/NoteCard';
 import { showToast } from '../components/Toast';
 import RenderHtml from 'react-native-render-html';
 // @ts-ignore

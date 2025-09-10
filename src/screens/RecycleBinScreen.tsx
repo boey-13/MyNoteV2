@@ -8,7 +8,6 @@ import {
   listDeleted,
   restoreNotes,
 } from '../db/notes';
-import NoteCard from '../components/NoteCard';
 import CustomButton from '../components/CustomButton';
 import ConfirmDialog from '../components/ConfirmDialog';
 import { showToast } from '../components/Toast';

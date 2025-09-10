@@ -123,7 +123,7 @@ function AppStack() {
   );
 }
 
-// ✅ Custom Drawer: Modern design with user info and navigation
+// Custom Drawer
 function CustomDrawerContent(
   props: DrawerContentComponentProps & { signedIn: boolean; onSignOut: () => void }
 ) {
