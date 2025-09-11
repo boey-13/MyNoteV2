@@ -3,7 +3,9 @@ export type ID = number;
 export type Folder = {
   id: ID;
   name: string;
+  user_id: ID;
   created_at: string;
+  updated_at: string | null;
 };
 
 export type Note = {

@@ -52,6 +52,28 @@ export async function postJson<T>(path: string, body: any) {
   return res.json() as Promise<T>;
 }
 
+export async function putJson<T>(path: string, body: any) {
+  const headers = await authHeaders();
+  const res = await withTimeout(fetch(`${BASE_URL}${path}`, {
+    method: 'PUT', headers, body: JSON.stringify(body),
+  }));
+  if (!res.ok) {
+    // Try to parse error message from response
+    try {
+      const errorData = await res.json();
+      if (errorData.error && errorData.error.message) {
+        throw new Error(errorData.error.message);
+      }
+      // If no specific error message, fall back to status code
+      throw new Error(`${res.status} ${res.statusText}`);
+    } catch (parseError) {
+      // If parsing fails, fall back to status code
+      throw new Error(`${res.status} ${res.statusText}`);
+    }
+  }
+  return res.json() as Promise<T>;
+}
+
 export async function del(path: string) {
   const headers = await authHeaders();
   const res = await withTimeout(fetch(`${BASE_URL}${path}`, { method: 'DELETE', headers }));

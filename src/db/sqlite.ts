@@ -9,7 +9,7 @@ SQLite.enablePromise(true);
  * v1: created app_meta + folders + (intended) notes/note_assets
  * v2: ensure notes, note_assets and related indexes exist (repair migration)
  */
-export const SCHEMA_VERSION = 7;
+export const SCHEMA_VERSION = 8;
 
 let dbInstance: SQLiteDatabase | null = null;
 
@@ -79,6 +79,16 @@ async function runMigrations(db: SQLiteDatabase): Promise<void> {
   if (current < 8) {
     await migrateToV8(db);
     current = 8;
+    await setSchemaVersion(db, current);
+  }
+  if (current < 9) {
+    await migrateToV9(db);
+    current = 9;
+    await setSchemaVersion(db, current);
+  }
+  if (current < 10) {
+    await migrateToV10(db);
+    current = 10;
     await setSchemaVersion(db, current);
   }
 }
@@ -292,6 +302,26 @@ async function migrateToV8(db: SQLiteDatabase): Promise<void> {
     db.transaction(tx => {
       // Add avatar column to users table (ignore if already exists)
       tx.executeSql(`ALTER TABLE users ADD COLUMN avatar TEXT`, [], () => {}, () => false);
+      resolve();
+    }, reject);
+  });
+}
+
+async function migrateToV9(db: SQLiteDatabase): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    db.transaction(tx => {
+      // Add updated_at column to folders table (ignore if already exists)
+      tx.executeSql(`ALTER TABLE folders ADD COLUMN updated_at TEXT`, [], () => {}, () => false);
+      resolve();
+    }, reject);
+  });
+}
+
+async function migrateToV10(db: SQLiteDatabase): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    db.transaction(tx => {
+      // Backfill null updated_at values with created_at values
+      tx.executeSql(`UPDATE folders SET updated_at = created_at WHERE updated_at IS NULL`, []);
       resolve();
     }, reject);
   });

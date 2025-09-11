@@ -12,6 +12,27 @@ socketio = SocketIO(app, cors_allowed_origins="*")  # ← Added
 def now_iso():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat() + "Z"
 
+def update_folders_list(sync_data):
+    """Update folders list in sync_status.json"""
+    try:
+        conn = db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, user_id, name, created_at, updated_at FROM folders ORDER BY id")
+        folders = []
+        for row in cursor.fetchall():
+            folders.append({
+                "id": row[0],
+                "user_id": row[1],
+                "name": row[2],
+                "created_at": row[3],
+                "updated_at": row[4]
+            })
+        conn.close()
+        
+        sync_data["folders"] = folders
+    except Exception as e:
+        print(f"Error updating folders list: {e}")
+
 def update_sync_status(operation_type, data=None):
     """Update sync_status.json with real-time data"""
     try:
@@ -28,12 +49,14 @@ def update_sync_status(operation_type, data=None):
                     "status": "active",
                     "total_users": 0,
                     "total_notes": 0,
+                    "total_folders": 0,
                     "pending_sync_operations": 0,
                     "websocket_connections": 0,
                     "last_sync_operation": None
                 },
                 "users": [],
                 "notes": [],
+                "folders": [],
                 "recent_operations": []
             }
         
@@ -49,6 +72,9 @@ def update_sync_status(operation_type, data=None):
         }
         sync_data["recent_operations"].insert(0, operation)
         sync_data["recent_operations"] = sync_data["recent_operations"][:10]
+        
+        # Always update folders list
+        update_folders_list(sync_data)
         
         # Get all users data
         conn = db()
@@ -90,9 +116,14 @@ def update_sync_status(operation_type, data=None):
             })
         sync_data["notes"] = notes
         
+        # Get folders count
+        cursor.execute("SELECT COUNT(*) FROM folders")
+        total_folders = cursor.fetchone()[0]
+        
         # Update totals
         sync_data["sync_status"]["total_users"] = len(users)
         sync_data["sync_status"]["total_notes"] = len(notes)
+        sync_data["sync_status"]["total_folders"] = total_folders
         sync_data["sync_status"]["pending_sync_operations"] = sum(1 for note in notes if note["dirty"])
         
         conn.close()
@@ -103,6 +134,8 @@ def update_sync_status(operation_type, data=None):
             
     except Exception as e:
         print(f"Error updating sync status: {e}")
+        import traceback
+        traceback.print_exc()
 
 def db():
     conn = sqlite3.connect(DB_PATH)
@@ -115,24 +148,39 @@ def init_db():
     c.execute("""
       CREATE TABLE IF NOT EXISTS users(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        username TEXT,
-        email TEXT UNIQUE,
-        password TEXT
+        username TEXT NOT NULL,
+        email TEXT UNIQUE NOT NULL,
+        password TEXT NOT NULL,
+        avatar TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     """)
     c.execute("""
       CREATE TABLE IF NOT EXISTS notes(
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
-        title TEXT,
-        content TEXT,
+        title TEXT NOT NULL,
+        content TEXT DEFAULT '',
         folder_id INTEGER,
         is_favorite INTEGER DEFAULT 0,
         is_deleted INTEGER DEFAULT 0,
-        updated_at TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now')),
+        deleted_at TEXT,
         version INTEGER DEFAULT 1,
         remote_id TEXT UNIQUE,
         dirty INTEGER DEFAULT 0,
+        FOREIGN KEY(user_id) REFERENCES users(id),
+        FOREIGN KEY(folder_id) REFERENCES folders(id) ON DELETE SET NULL
+      )
+    """)
+    c.execute("""
+      CREATE TABLE IF NOT EXISTS folders(
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        user_id INTEGER NOT NULL,
+        name TEXT NOT NULL,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT,
         FOREIGN KEY(user_id) REFERENCES users(id)
       )
     """)
@@ -141,20 +189,30 @@ def init_db():
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         user_id INTEGER NOT NULL,
         action TEXT NOT NULL,
+        table_name TEXT NOT NULL,
+        record_id INTEGER,
+        data TEXT,
         note_local_id INTEGER,
         remote_id TEXT,
         try_count INTEGER DEFAULT 0,
         last_error TEXT,
-        created_at TEXT NOT NULL
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        FOREIGN KEY(user_id) REFERENCES users(id)
       )
     """)
     
     # Create indexes
     c.execute("CREATE INDEX IF NOT EXISTS idx_notes_dirty ON notes(dirty)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notes_user ON notes(user_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notes_folder ON notes(folder_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notes_updated ON notes(updated_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_notes_user_updated ON notes(user_id, updated_at)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_folders_user ON folders(user_id)")
+    c.execute("CREATE INDEX IF NOT EXISTS idx_folders_user_name ON folders(user_id, name)")
     c.execute("CREATE INDEX IF NOT EXISTS idx_syncq_user ON sync_queue(user_id, created_at)")
     
     # Pre-create guest user id=1
-    c.execute("INSERT OR IGNORE INTO users(id, username) VALUES (1, 'guest')")
+    c.execute("INSERT OR IGNORE INTO users(id, username, email, password, created_at) VALUES (1, 'guest', 'guest@example.com', '', datetime('now'))")
     conn.commit()
     conn.close()
 
@@ -359,15 +417,23 @@ def create_folder():
         return jsonify({"error": {"code": "FOLDER_EXISTS", "message": "Folder name already exists"}}), 409
     
     # Create new folder
-    c.execute("INSERT INTO folders (user_id, name, created_at) VALUES (?, ?, ?)", 
-              (uid, name, now_iso()))
+    created_at = now_iso()
+    c.execute("INSERT INTO folders (user_id, name, created_at, updated_at) VALUES (?, ?, ?, ?)", 
+              (uid, name, created_at, created_at))
     folder_id = c.lastrowid
     conn.commit()
     conn.close()
     
+    # Update sync status for folder creation
+    update_sync_status("folder_creations", {
+        "folder_id": folder_id,
+        "user_id": uid,
+        "name": name
+    })
+    
     # No WebSocket event for folders - notes contain folder_id
     
-    return jsonify({"id": folder_id, "name": name, "created_at": now_iso()})
+    return jsonify({"id": folder_id, "name": name, "created_at": created_at, "updated_at": created_at})
 
 @app.put("/api/folders/<int:folder_id>")
 def update_folder(folder_id: int):
@@ -400,6 +466,13 @@ def update_folder(folder_id: int):
     conn.commit()
     conn.close()
     
+    # Update sync status for folder update
+    update_sync_status("folder_updates", {
+        "folder_id": folder_id,
+        "user_id": uid,
+        "name": name
+    })
+    
     # No WebSocket event for folders - notes contain folder_id
     
     return jsonify({"id": folder_id, "name": name, "updated_at": now_iso()})
@@ -425,6 +498,12 @@ def delete_folder(folder_id: int):
     c.execute("DELETE FROM folders WHERE id = ? AND user_id = ?", (folder_id, uid))
     conn.commit()
     conn.close()
+    
+    # Update sync status for folder deletion
+    update_sync_status("folder_deletions", {
+        "folder_id": folder_id,
+        "user_id": uid
+    })
     
     # No WebSocket event for folders - notes contain folder_id
     

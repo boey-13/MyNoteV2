@@ -56,6 +56,11 @@ export default function EditNoteScreen({ route, navigation }: any) {
   const [showManageFolders, setShowManageFolders] = useState(false);
   const [editingFolder, setEditingFolder] = useState<{ id: number; name: string } | null>(null);
   const [editFolderName, setEditFolderName] = useState('');
+  
+  // folder list scroll refs
+  const folderListRef = useRef<ScrollView>(null);
+  const [canScrollUp, setCanScrollUp] = useState(false);
+  const [canScrollDown, setCanScrollDown] = useState(false);
 
   // attachments state
   const [existingAssets, setExistingAssets] = useState<NoteAsset[]>([]);
@@ -195,7 +200,8 @@ export default function EditNoteScreen({ route, navigation }: any) {
       setNewFolderName('');
       showToast.success(`Folder "${folder.name}" created`);
     } catch (error) {
-      showToast.error('Failed to create folder', error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
+      showToast.error('Failed to create folder', errorMessage);
     }
   }
 
@@ -216,7 +222,8 @@ export default function EditNoteScreen({ route, navigation }: any) {
       setEditFolderName('');
       showToast.success(`Folder renamed to "${editFolderName.trim()}"`);
     } catch (error) {
-      showToast.error('Failed to rename folder', error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
+      showToast.error('Failed to rename folder', errorMessage);
     }
   }
 
@@ -229,9 +236,30 @@ export default function EditNoteScreen({ route, navigation }: any) {
       setDirty(true);
       showToast.success(`Folder "${folderName}" deleted`);
     } catch (error) {
-      showToast.error('Failed to delete folder', error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : (typeof error === 'string' ? error : 'Unknown error');
+      showToast.error('Failed to delete folder', errorMessage);
     }
   }
+
+  // Scroll folder list functions
+  const scrollFolderList = (direction: 'up' | 'down') => {
+    if (folderListRef.current) {
+      const scrollAmount = 60; // pixels to scroll
+      folderListRef.current.scrollTo({
+        y: direction === 'down' ? scrollAmount : -scrollAmount,
+        animated: true
+      });
+    }
+  };
+
+  const checkScrollPosition = () => {
+    if (folderListRef.current) {
+      folderListRef.current.scrollTo({ y: 0, animated: false });
+      folderListRef.current.scrollToEnd({ animated: false });
+      // Reset scroll position
+      folderListRef.current.scrollTo({ y: 0, animated: false });
+    }
+  };
 
   // load note + draft on mount
   useEffect(() => {
@@ -582,61 +610,85 @@ export default function EditNoteScreen({ route, navigation }: any) {
             <View style={styles.manageFoldersContainer}>
               <Text style={styles.manageFoldersTitle}>Manage Folders</Text>
               
-              {/* Folder List */}
-              <ScrollView style={styles.folderList} showsVerticalScrollIndicator={false}>
-                {folderOpts.filter(opt => opt.value !== 'NULL' && opt.value !== 'ADD_FOLDER').map(opt => (
-                  <View key={opt.value} style={styles.folderItem}>
-                    {editingFolder?.id === opt.value ? (
-                      <View style={styles.folderEditContainer}>
-                        <TextInput
-                          style={styles.folderEditInput}
-                          value={editFolderName}
-                          onChangeText={setEditFolderName}
-                          placeholder="Folder name"
-                          placeholderTextColor="#999"
-                          autoFocus
-                        />
-                        <View style={styles.folderEditButtons}>
-                          <TouchableOpacity
-                            style={styles.folderEditButton}
-                            onPress={() => {
-                              setEditingFolder(null);
-                              setEditFolderName('');
-                            }}
-                          >
-                            <Icon name="x" size={16} color="#666" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.folderEditButton}
-                            onPress={handleSaveFolderEdit}
-                            disabled={!editFolderName.trim()}
-                          >
-                            <Icon name="check" size={16} color={editFolderName.trim() ? "#455B96" : "#ccc"} />
-                          </TouchableOpacity>
+              {/* Folder List with Scroll Controls */}
+              <View style={styles.folderListContainer}>
+                {/* Scroll Up Button */}
+                <TouchableOpacity
+                  style={[styles.scrollButton, styles.scrollUpButton]}
+                  onPress={() => scrollFolderList('up')}
+                >
+                  <Icon name="chevron-up" size={20} color="#455B96" />
+                </TouchableOpacity>
+                
+                {/* Folder List */}
+                <ScrollView 
+                  ref={folderListRef}
+                  style={styles.folderList} 
+                  showsVerticalScrollIndicator={false}
+                  onContentSizeChange={checkScrollPosition}
+                >
+                  {folderOpts.filter(opt => opt.value !== 'NULL' && opt.value !== 'ADD_FOLDER').map(opt => (
+                    <View key={opt.value} style={styles.folderItem}>
+                      {editingFolder?.id === opt.value ? (
+                        <View style={styles.folderEditContainer}>
+                          <TextInput
+                            style={styles.folderEditInput}
+                            value={editFolderName}
+                            onChangeText={setEditFolderName}
+                            placeholder="Folder name"
+                            placeholderTextColor="#999"
+                            autoFocus
+                          />
+                          <View style={styles.folderEditButtons}>
+                            <TouchableOpacity
+                              style={styles.folderEditButton}
+                              onPress={() => {
+                                setEditingFolder(null);
+                                setEditFolderName('');
+                              }}
+                            >
+                              <Icon name="x" size={16} color="#666" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.folderEditButton}
+                              onPress={handleSaveFolderEdit}
+                              disabled={!editFolderName.trim()}
+                            >
+                              <Icon name="check" size={16} color={editFolderName.trim() ? "#455B96" : "#ccc"} />
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </View>
-                    ) : (
-                      <View style={styles.folderItemContent}>
-                        <Text style={styles.folderItemName}>{opt.label}</Text>
-                        <View style={styles.folderItemActions}>
-                          <TouchableOpacity
-                            style={styles.folderActionButton}
-                            onPress={() => startEditFolder({ id: opt.value as number, name: opt.label })}
-                          >
-                            <Icon name="edit-3" size={16} color="#455B96" />
-                          </TouchableOpacity>
-                          <TouchableOpacity
-                            style={styles.folderActionButton}
-                            onPress={() => handleDeleteFolder(opt.value as number, opt.label)}
-                          >
-                            <Icon name="trash-2" size={16} color="#E74C3C" />
-                          </TouchableOpacity>
+                      ) : (
+                        <View style={styles.folderItemContent}>
+                          <Text style={styles.folderItemName}>{opt.label}</Text>
+                          <View style={styles.folderItemActions}>
+                            <TouchableOpacity
+                              style={styles.folderActionButton}
+                              onPress={() => startEditFolder({ id: opt.value as number, name: opt.label })}
+                            >
+                              <Icon name="edit-3" size={16} color="#455B96" />
+                            </TouchableOpacity>
+                            <TouchableOpacity
+                              style={styles.folderActionButton}
+                              onPress={() => handleDeleteFolder(opt.value as number, opt.label)}
+                            >
+                              <Icon name="trash-2" size={16} color="#E74C3C" />
+                            </TouchableOpacity>
+                          </View>
                         </View>
-                      </View>
-                    )}
-                  </View>
-                ))}
-              </ScrollView>
+                      )}
+                    </View>
+                  ))}
+                </ScrollView>
+                
+                {/* Scroll Down Button */}
+                <TouchableOpacity
+                  style={[styles.scrollButton, styles.scrollDownButton]}
+                  onPress={() => scrollFolderList('down')}
+                >
+                  <Icon name="chevron-down" size={20} color="#455B96" />
+                </TouchableOpacity>
+              </View>
 
               {/* Add New Folder Button */}
               <TouchableOpacity
@@ -778,7 +830,6 @@ export default function EditNoteScreen({ route, navigation }: any) {
             </View>
           </View>
 
-          {/* Image Grid */}
 
           {/* Action Buttons */}
           <View style={styles.actionButtons}>
@@ -1070,9 +1121,37 @@ const styles = StyleSheet.create({
     color: '#2C3E50',
     marginBottom: 16,
   },
+  folderListContainer: {
+    position: 'relative',
+    marginBottom: 16,
+  },
   folderList: {
     maxHeight: 200,
-    marginBottom: 16,
+    paddingHorizontal: 8,
+  },
+  scrollButton: {
+    position: 'absolute',
+    right: 0,
+    width: 32,
+    height: 32,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: '#E9ECEF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 2,
+  },
+  scrollUpButton: {
+    top: -8,
+  },
+  scrollDownButton: {
+    bottom: -8,
   },
   folderItem: {
     backgroundColor: '#F8F9FA',

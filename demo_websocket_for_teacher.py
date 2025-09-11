@@ -65,7 +65,34 @@ def demo_websocket_for_teacher():
         print("   → Description: User deleted a note in the app")
         print("-" * 40)
     
-    # Folder events removed - notes contain folder_id for sync
+    # Receive folder creation event
+    @sio.event
+    def folder_created(data):
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        print(f"📁 [{timestamp}] Folder Creation Event")
+        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print(f"   Folder Name: {data.get('name', 'unknown')}")
+        print("   → Description: User created a new folder in the app")
+        print("-" * 40)
+    
+    # Receive folder update event
+    @sio.event
+    def folder_updated(data):
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        print(f"✏️ [{timestamp}] Folder Update Event")
+        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print(f"   New Name: {data.get('name', 'unknown')}")
+        print("   → Description: User renamed a folder in the app")
+        print("-" * 40)
+    
+    # Receive folder deletion event
+    @sio.event
+    def folder_deleted(data):
+        timestamp = datetime.now().strftime('%H:%M:%S')
+        print(f"🗑️ [{timestamp}] Folder Deletion Event")
+        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print("   → Description: User deleted a folder in the app")
+        print("-" * 40)
     
     # Receive sync update event
     @sio.event
@@ -87,6 +114,9 @@ def demo_websocket_for_teacher():
             print("   1. Create new note in mobile app")
             print("   2. Edit existing note")
             print("   3. Delete note")
+            print("   4. Create new folder")
+            print("   5. Rename folder")
+            print("   6. Delete folder")
             print("\n⏰ Demo will last 2 minutes, press Ctrl+C to stop")
             print("=" * 60)
             
@@ -121,6 +151,7 @@ def show_sync_status():
             sync_status = data.get('sync_status', {})
             print(f"   Total Users: {sync_status.get('total_users', 0)}")
             print(f"   Total Notes: {sync_status.get('total_notes', 0)}")
+            print(f"   Total Folders: {sync_status.get('total_folders', 0)}")
             print(f"   Pending Sync Operations: {sync_status.get('pending_sync_operations', 0)}")
             print(f"   Last Updated: {sync_status.get('last_updated', 'unknown')}")
         else:
