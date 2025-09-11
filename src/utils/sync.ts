@@ -20,7 +20,9 @@ async function pushDeleteQueue(uid: number) {
       await removeQueueItem(it.id);
     } catch (e: any) {
       await bumpQueueAttempt(it.id, String(e?.message || e));
-      if (/timeout|Network/i.test(String(e))) break; // Network issue: stop and retry later
+      if (/timeout|Network/i.test(String(e))) {
+        throw e; // Re-throw network errors to be caught by main sync function
+      }
     }
   }
 }
@@ -34,32 +36,36 @@ async function pushDirty(uid: number): Promise<number> {
         `SELECT * FROM notes WHERE dirty=1 AND user_id=? ORDER BY updated_at ASC`,
         [uid],
         async (_, rs) => {
-          for (let i = 0; i < rs.rows.length; i++) {
-            const n = rs.rows.item(i);
-            const payload = {
-              id: n.remote_id ?? null,
-              title: n.title ?? '',
-              content: n.content ?? '',
-              folder_id: n.folder_id ?? null,
-              is_favorite: n.is_favorite ? 1 : 0,
-              is_deleted: n.is_deleted ? 1 : 0,
-              updated_at: n.updated_at,
-              version: n.version ?? 1,
-            };
-            const res = await postJson<{id:string|number, version:number, updated_at:string}>(`/notes/upsert`, payload);
-            await new Promise<void>((resv, rej) => {
-              db.transaction(txx => {
-                txx.executeSql(
-                  `UPDATE notes SET dirty=0, remote_id=?, version=?, updated_at=? WHERE id=?`,
-                  [res.id ? String(res.id) : n.remote_id, res.version ?? n.version, res.updated_at ?? n.updated_at, n.id],
-                  () => resv(),
-                  () => { rej(new Error("update failed")); return false; }
-                );
+          try {
+            for (let i = 0; i < rs.rows.length; i++) {
+              const n = rs.rows.item(i);
+              const payload = {
+                id: n.remote_id ?? null,
+                title: n.title ?? '',
+                content: n.content ?? '',
+                folder_id: n.folder_id ?? null,
+                is_favorite: n.is_favorite ? 1 : 0,
+                is_deleted: n.is_deleted ? 1 : 0,
+                updated_at: n.updated_at,
+                version: n.version ?? 1,
+              };
+              const res = await postJson<{id:string|number, version:number, updated_at:string}>(`/notes/upsert`, payload);
+              await new Promise<void>((resv, rej) => {
+                db.transaction(txx => {
+                  txx.executeSql(
+                    `UPDATE notes SET dirty=0, remote_id=?, version=?, updated_at=? WHERE id=?`,
+                    [res.id ? String(res.id) : n.remote_id, res.version ?? n.version, res.updated_at ?? n.updated_at, n.id],
+                    () => resv(),
+                    () => { rej(new Error("update failed")); return false; }
+                  );
+                });
               });
-            });
-            pushedCount++;
+              pushedCount++;
+            }
+            resolve();
+          } catch (error) {
+            reject(error);
           }
-          resolve();
         },
         (_, e) => { reject(e); return false; }
       );

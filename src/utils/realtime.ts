@@ -12,10 +12,15 @@ const WS_URL =
 let socket: Socket | null = null;
 let debounceTimer: any = null;
 
-function scheduleSync() {
+async function scheduleSync() {
   if (debounceTimer) clearTimeout(debounceTimer);
-  debounceTimer = setTimeout(() => {
-    runFullSync(false); // Silent sync (no Toast)
+  debounceTimer = setTimeout(async () => {
+    // Check if auto sync is enabled before syncing
+    const { isAutoSyncEnabled } = await import('./sync');
+    const enabled = await isAutoSyncEnabled();
+    if (enabled) {
+      runFullSync(false); // Silent sync (no Toast)
+    }
   }, 800); // Merge instant multiple events
 }
 

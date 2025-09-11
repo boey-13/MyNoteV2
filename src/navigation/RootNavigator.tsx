@@ -280,18 +280,30 @@ export default function RootNavigator() {
     })();
   }, []);
 
-  // Auto-sync on network recovery
+  // Auto-sync on network recovery (only if auto sync is enabled)
   React.useEffect(() => {
-    const sub = NetInfo.addEventListener(state => {
-      if (state.isConnected) runFullSync(false);
+    const sub = NetInfo.addEventListener(async (state) => {
+      if (state.isConnected) {
+        // Check if auto sync is enabled before syncing
+        const isAutoSyncEnabled = await import('../utils/sync').then(m => m.isAutoSyncEnabled());
+        if (isAutoSyncEnabled) {
+          runFullSync(false);
+        }
+      }
     });
     return () => sub();
   }, []);
 
-  // Auto-sync when app comes to foreground
+  // Auto-sync when app comes to foreground (only if auto sync is enabled)
   React.useEffect(() => {
-    const sub = AppState.addEventListener('change', s => {
-      if (s === 'active') runFullSync(false);
+    const sub = AppState.addEventListener('change', async (s) => {
+      if (s === 'active') {
+        // Check if auto sync is enabled before syncing
+        const isAutoSyncEnabled = await import('../utils/sync').then(m => m.isAutoSyncEnabled());
+        if (isAutoSyncEnabled) {
+          runFullSync(false);
+        }
+      }
     });
     return () => sub.remove();
   }, []);
