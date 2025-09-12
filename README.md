@@ -185,16 +185,18 @@ cat server/sync_status.json
 
 ### Test Sync Functionality
 ```bash
-# Run the sync demo script
-cd server
-python test_sync_demo.py
+# Run the WebSocket demo script
+python demo_websocket_for_teacher.py
+
+# Or test with HTML interface
+# Open test_websocket.html in your browser
 ```
 
 This will:
-1. Register a test user
-2. Create and update notes
-3. Show real-time sync statistics
-4. Display the sync status JSON file location
+1. Connect to WebSocket server
+2. Monitor real-time events (notes, folders)
+3. Show live sync statistics
+4. Display folder and note operations
 
 ## 🔧 Configuration
 
@@ -364,14 +366,23 @@ const DEBUG = true;
 ### Local REST API Endpoints
 - `POST /api/users/register` - User registration
 - `GET /api/notes` - Get user notes
-- `POST /api/notes` - Create new note
-- `PUT /api/notes/:id` - Update note
+- `POST /api/notes/upsert` - Create or update note
 - `DELETE /api/notes/:id` - Delete note
+- `GET /api/folders` - Get user folders
+- `POST /api/folders` - Create new folder
+- `PUT /api/folders/:id` - Update folder name
+- `DELETE /api/folders/:id` - Delete folder
+- `GET /api/sync-status` - Get real-time sync status
 
 ### WebSocket Events
 - `connect` - Establish connection
-- `sync_note` - Sync note changes
+- `hello` - Server greeting
+- `note_created` - Note creation notification
 - `note_updated` - Note update notification
+- `note_deleted` - Note deletion notification
+- `folder_created` - Folder creation notification
+- `folder_updated` - Folder update notification
+- `folder_deleted` - Folder deletion notification
 
 ## 🤝 Contributing
 
@@ -392,9 +403,12 @@ const DEBUG = true;
 ### Database Migrations
 When modifying database schema:
 1. Update `server/app.py` schema
-2. Create migration script
-3. Test migration on development database
-4. Document changes in README
+2. Add migration function in `src/db/sqlite.ts`
+3. Increment `SCHEMA_VERSION` constant
+4. Test migration on development database
+5. Document changes in README
+
+**Recent Migration (v10):** Fixed folder `updated_at` field null values by backfilling with `created_at` values.
 
 ### Sensitive Files
 The following files contain sensitive data and are automatically ignored by git:

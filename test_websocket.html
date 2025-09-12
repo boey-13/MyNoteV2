@@ -35,6 +35,9 @@
         .note-updated { border-left-color: #28a745; }
         .note-deleted { border-left-color: #dc3545; }
         .note-created { border-left-color: #17a2b8; }
+        .folder-created { border-left-color: #6f42c1; }
+        .folder-updated { border-left-color: #fd7e14; }
+        .folder-deleted { border-left-color: #e83e8c; }
         .hello { border-left-color: #ffc107; }
         h1 { color: #333; text-align: center; }
         .instructions {
@@ -55,6 +58,7 @@
                 <li>Ensure backend server is running on <code>http://localhost:5000</code></li>
                 <li>Open MyNote app on your phone and login</li>
                 <li>Create, edit, or delete notes on your phone</li>
+                <li>Create, rename, or delete folders on your phone</li>
                 <li>Observe real-time event updates below</li>
             </ol>
         </div>
@@ -118,6 +122,21 @@
         // Note created event
         socket.on('note_created', (data) => {
             addMessage('note-created', `✨ Note created`, data);
+        });
+        
+        // Folder created event
+        socket.on('folder_created', (data) => {
+            addMessage('folder-created', `📁 Folder created`, data);
+        });
+        
+        // Folder updated event
+        socket.on('folder_updated', (data) => {
+            addMessage('folder-updated', `✏️ Folder updated`, data);
+        });
+        
+        // Folder deleted event
+        socket.on('folder_deleted', (data) => {
+            addMessage('folder-deleted', `🗑️ Folder deleted`, data);
         });
         
         // Add message to log

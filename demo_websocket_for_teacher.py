@@ -70,8 +70,9 @@ def demo_websocket_for_teacher():
     def folder_created(data):
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f"📁 [{timestamp}] Folder Creation Event")
-        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print(f"   Folder ID: {data.get('id', 'unknown')}")
         print(f"   Folder Name: {data.get('name', 'unknown')}")
+        print(f"   User ID: {data.get('user_id', 'unknown')}")
         print("   → Description: User created a new folder in the app")
         print("-" * 40)
     
@@ -80,8 +81,9 @@ def demo_websocket_for_teacher():
     def folder_updated(data):
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f"✏️ [{timestamp}] Folder Update Event")
-        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print(f"   Folder ID: {data.get('id', 'unknown')}")
         print(f"   New Name: {data.get('name', 'unknown')}")
+        print(f"   User ID: {data.get('user_id', 'unknown')}")
         print("   → Description: User renamed a folder in the app")
         print("-" * 40)
     
@@ -90,7 +92,8 @@ def demo_websocket_for_teacher():
     def folder_deleted(data):
         timestamp = datetime.now().strftime('%H:%M:%S')
         print(f"🗑️ [{timestamp}] Folder Deletion Event")
-        print(f"   Folder ID: {data.get('folder_id', 'unknown')}")
+        print(f"   Folder ID: {data.get('id', 'unknown')}")
+        print(f"   User ID: {data.get('user_id', 'unknown')}")
         print("   → Description: User deleted a folder in the app")
         print("-" * 40)
     
@@ -117,6 +120,7 @@ def demo_websocket_for_teacher():
             print("   4. Create new folder")
             print("   5. Rename folder")
             print("   6. Delete folder")
+            print("   7. Move notes between folders")
             print("\n⏰ Demo will last 2 minutes, press Ctrl+C to stop")
             print("=" * 60)
             

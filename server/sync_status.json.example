@@ -1,45 +1,57 @@
 {
-  "timestamp": "2024-01-01T00:00:00Z",
-  "server_status": "running",
+  "sync_status": {
+    "last_updated": "2024-01-01T00:00:00Z",
+    "status": "active",
+    "total_users": 1,
+    "total_notes": 1,
+    "total_folders": 1,
+    "pending_sync_operations": 0,
+    "websocket_connections": 0,
+    "last_sync_operation": "note_created"
+  },
   "users": [
     {
       "id": 1,
       "username": "example_user",
       "email": "user@example.com",
-      "created_at": "2024-01-01T00:00:00Z"
+      "password": "***"
+    }
+  ],
+  "folders": [
+    {
+      "id": 1,
+      "user_id": 1,
+      "name": "Example Folder",
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
     }
   ],
   "notes": [
     {
       "id": 1,
-      "title": "Example Note",
-      "content": "This is an example note for demonstration purposes",
       "user_id": 1,
-      "folder_id": null,
-      "folder_name": null,
-      "is_favorite": 0,
-      "is_deleted": 0,
-      "created_at": "2024-01-01T00:00:00Z",
+      "title": "Example Note",
+      "content": "This is an example note for demonstration purposes...",
+      "folder_id": 1,
+      "is_favorite": false,
+      "is_deleted": false,
       "updated_at": "2024-01-01T00:00:00Z",
+      "version": 1,
       "server_id": 1,
-      "client_remote_id": 1
+      "client_remote_id": "1",
+      "dirty": false
     }
   ],
   "recent_operations": [
     {
-      "timestamp": "2024-01-01T00:00:00Z",
       "type": "note_created",
-      "user_id": 1,
-      "note_id": 1,
-      "title": "Example Note"
+      "timestamp": "2024-01-01T00:00:00Z",
+      "data": {
+        "note_id": 1,
+        "user_id": 1,
+        "title": "Example Note",
+        "version": 1
+      }
     }
-  ],
-  "statistics": {
-    "total_users": 1,
-    "total_notes": 1,
-    "active_notes": 1,
-    "deleted_notes": 0,
-    "favorite_notes": 0,
-    "total_folders": 0
-  }
+  ]
 }

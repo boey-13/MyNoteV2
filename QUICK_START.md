@@ -53,13 +53,16 @@ Your app should now be running! The weather features will work once you add the 
 - **Weather not working?** → Add your OpenWeatherMap API key
 - **Database errors?** → Run `python migrate_database.py`
 - **WebSocket disconnected?** → Check server is running, try manual command: `adb reverse tcp:5000 tcp:5000`
+- **Folder updated_at is null?** → Restart the app to run database migration v10
 
 ## 📱 What You'll See
 
 1. **Login/Register Screen** - Create your account
-2. **Home Screen** - View all your notes
+2. **Home Screen** - View all your notes and folders
 3. **Edit Note Screen** - Create/edit notes with weather integration
-4. **Search Screen** - Find notes quickly
-5. **Profile Screen** - Manage your account
+4. **Folder Management** - Create, rename, and organize folders
+5. **Search Screen** - Find notes quickly
+6. **Profile Screen** - Manage your account
+7. **Real-time Sync** - See live updates across devices
 
 Enjoy your new note-taking app! 📝✨
