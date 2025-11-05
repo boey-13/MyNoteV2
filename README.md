@@ -1,26 +1,26 @@
-# 🌤️ MyNote - Advanced Note-Taking App
+# MyNote - Advanced Note-Taking App
 
 A modern, feature-rich note-taking application built with React Native, featuring real-time synchronization, weather integration, and enterprise-grade security.
 
-## ✨ Features
+## Features
 
-- 📝 **Rich Text Editing** - Create and edit notes with rich formatting
-- 🌤️ **Weather Integration** - Add real-time weather data to your notes
-- 🔄 **Real-time Sync** - Synchronize notes across multiple devices
-- 🔐 **Secure Authentication** - Password encryption and secure user management
-- 📁 **Folder Organization** - Organize notes into custom folders
-- ⭐ **Favorites System** - Mark important notes as favorites
-- 🗑️ **Recycle Bin** - Soft delete with restore functionality
-- 🔍 **Advanced Search** - Search through notes with filters
-- 📱 **Cross-platform** - Works on Android and iOS
-- 🎨 **Modern UI** - Beautiful, intuitive user interface
+- **Rich Text Editing** - Create and edit notes with rich formatting
+- **Weather Integration** - Add real-time weather data to your notes
+- **Real-time Sync** - Synchronize notes across multiple devices
+- **Secure Authentication** - Password encryption and secure user management
+- **Folder Organization** - Organize notes into custom folders
+- **Favorites System** - Mark important notes as favorites
+- **Recycle Bin** - Soft delete with restore functionality
+- **Advanced Search** - Search through notes with filters
+- **Cross-platform** - Works on Android and iOS
+- **Modern UI** - Beautiful, intuitive user interface
 
-## 🏗️ Architecture
+## Architecture
 
 ### Three API Servers (UECS3253 Compliant)
-1. **🌐 Web-based API**: OpenWeatherMap (Weather data)
-2. **🔌 WebSocket API**: Local WebSocket server (Real-time sync)
-3. **🌐 Web-based API**: Local REST API (User management & data)
+1. **Web-based API**: OpenWeatherMap (Weather data)
+2. **WebSocket API**: Local WebSocket server (Real-time sync)
+3. **Web-based API**: Local REST API (User management & data)
 
 ### Tech Stack
 - **Frontend**: React Native, TypeScript
@@ -31,7 +31,7 @@ A modern, feature-rich note-taking application built with React Native, featurin
 - **Navigation**: Stack + Drawer + Tab Navigation
 - **Components**: 3+ Third-party components with external stylesheets
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 - Node.js (v16 or higher)
@@ -160,7 +160,7 @@ npm run ios
 2. Select your device/simulator
 3. Click Run
 
-## 🔄 Real-time Sync Monitoring
+## Real-time Sync Monitoring
 
 ### Sync Status JSON
 The application automatically generates a real-time sync status file at `server/sync_status.json` that tracks:
@@ -172,7 +172,7 @@ The application automatically generates a real-time sync status file at `server/
 
 **⚠️ Important**: This file contains sensitive user data and is automatically ignored by git (see `.gitignore`). Each developer will have their own local `sync_status.json` file.
 
-**📄 Example File**: See `server/sync_status.json.example` for the expected file structure.
+**Example File**: See `server/sync_status.json.example` for the expected file structure.
 
 ### View Sync Status
 ```bash
